@@ -42,12 +42,10 @@ def recommend_repayment_plan(row: dict) -> str:
         "SEASONAL": row.get("repayment_plan_seasonal_fit", 0),
     }
 
-    best = max(plans, key=plans.get)
-
-    if plans[best] <= 0:
+    best_plan = max(plans, key=plans.get)
+    if plans[best_plan] <= 0:
         return "NONE"
-
-    return best
+    return best_plan
 
 
 def recommend_loan(row: dict, final_score: int, fraud_penalty: int) -> dict:

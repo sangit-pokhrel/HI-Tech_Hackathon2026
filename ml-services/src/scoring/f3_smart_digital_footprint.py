@@ -8,12 +8,11 @@ def clamp(value, min_value=0.0, max_value=1.0):
 
 def score_f3_smart_digital_footprint(row: dict) -> int:
     '''
-    F3: Smart Digital Footprints
+    F3: Smart Digital Footprint
     Max = 220
-
-    F3.1 Airtime top-up micro-consistency = 80
-    F3.2 NEA/KUKL smart calibration = 80
-    F3.3 Micro-obligation adherence = 60
+    - Airtime/mobile top-up consistency: 80
+    - Utility calibration: 80
+    - Micro-obligation adherence: 60
     '''
     airtime = clamp(row.get("airtime_consistency_score", 0))
     utility = clamp(row.get("utility_calibration_score", 0))

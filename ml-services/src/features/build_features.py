@@ -1,7 +1,7 @@
 import pandas as pd
 import networkx as nx
 
-from src.common.config import RAW_DATA_DIR, PROCESSED_DATA_DIR
+from src.common.config import RAW_DATA_DIR, PROCESSED_DATA_DIR, GENERATE_SYNTHETIC_LABELS
 from src.common.constants import LOOKBACK_DAYS
 from src.common.logger import logger
 from src.scoring.fusion_score import calculate_rule_score
@@ -10,7 +10,7 @@ from src.scoring.fusion_score import calculate_rule_score
 def safe_read(name: str) -> pd.DataFrame:
     path = RAW_DATA_DIR / f"{name}.csv"
     if not path.exists():
-        logger.warning(f"Missing {path}; using empty DataFrame.")
+        logger.warning(f"Missing {path}. Using empty DataFrame.")
         return pd.DataFrame()
     return pd.read_csv(path)
 
@@ -32,7 +32,7 @@ def get_merchant_id(row: pd.Series) -> str:
     for key in ["_id", "merchant_id", "merchant_code"]:
         if key in row.index and pd.notna(row[key]):
             return str(row[key])
-    raise ValueError("Merchant row has no ID column.")
+    raise ValueError("Merchant row has no usable ID.")
 
 
 def build_social_graph_scores(social_edges: pd.DataFrame) -> dict:
@@ -66,7 +66,6 @@ def build_social_graph_scores(social_edges: pd.DataFrame) -> dict:
             continue
 
         merchant_edges = social_edges[social_edges[source_col].astype(str) == str(node)]
-
         total_edges = len(merchant_edges)
         unique_targets = merchant_edges[target_col].nunique() if total_edges else 0
         diversity = clamp(unique_targets / max(total_edges, 1))
@@ -87,6 +86,26 @@ def build_social_graph_scores(social_edges: pd.DataFrame) -> dict:
     return result
 
 
+def derive_synthetic_target(row: dict) -> tuple[str, int]:
+    '''
+    Synthetic label for hackathon only.
+    Real training should use repayment_records.ml_target_default.
+    '''
+    score = row.get("rule_based_sajilo_score", 500)
+    fraud_penalty = row.get("fraud_penalty", 0)
+    utility_score = row.get("utility_calibration_score", 0.5)
+    cashout_speed = row.get("cashout_speed_score", 0.5)
+    diversity = row.get("customer_diversity_score", 0.5)
+
+    if score < 420 or fraud_penalty >= 120 or (utility_score < 0.25 and cashout_speed < 0.35):
+        return "DEFAULT", 1
+
+    if score < 580 or diversity < 0.20:
+        return "LATE", 0
+
+    return "GOOD", 0
+
+
 def build_features() -> pd.DataFrame:
     users = safe_read("users")
     merchants = safe_read("merchants")
@@ -94,6 +113,8 @@ def build_features() -> pd.DataFrame:
     transactions = safe_read("transactions")
     utility_payments = safe_read("utility_payments")
     wallet_activities = safe_read("wallet_activities")
+
+    # Optional/future collections from updated backend schema
     loan_applications = safe_read("loan_applications")
     repayment_records = safe_read("repayment_records")
     social_edges = safe_read("social_edges")
@@ -103,30 +124,37 @@ def build_features() -> pd.DataFrame:
         raise ValueError("merchants.csv is required. Run fetch_api_to_csv first.")
 
     graph_scores = build_social_graph_scores(social_edges)
-
     rows = []
 
     for _, merchant in merchants.iterrows():
         merchant_id = get_merchant_id(merchant)
         merchant_code = str(merchant.get("merchant_code", merchant_id))
+        merchant_user_id = str(merchant.get("user_id", ""))
         business_type = str(merchant.get("business_type", "OTHER"))
 
-        tx_receiver_col = first_existing_col(transactions, ["receiver_code", "merchant_id", "receiver_id"])
-        tx_sender_col = first_existing_col(transactions, ["sender_code", "customer_id", "sender_id"])
-
-        if not transactions.empty and tx_receiver_col:
-            merchant_tx = transactions[
-                transactions[tx_receiver_col].astype(str).isin([merchant_id, merchant_code])
-            ].copy()
+        # New backend schema:
+        # Transaction.sender_id and receiver_id reference User.
+        # For merchant income, receiver_id should match merchant.user_id.
+        if not transactions.empty and "receiver_id" in transactions.columns:
+            merchant_tx = transactions[transactions["receiver_id"].astype(str) == merchant_user_id].copy()
         else:
-            merchant_tx = pd.DataFrame()
+            # fallback for older transaction schemas
+            receiver_col = first_existing_col(transactions, ["receiver_code", "merchant_id", "receiver_id"])
+            if receiver_col:
+                merchant_tx = transactions[transactions[receiver_col].astype(str).isin([merchant_id, merchant_code, merchant_user_id])].copy()
+            else:
+                merchant_tx = pd.DataFrame()
 
         if not utility_payments.empty and "merchant_id" in utility_payments.columns:
             merchant_util = utility_payments[utility_payments["merchant_id"].astype(str) == merchant_id].copy()
         else:
             merchant_util = pd.DataFrame()
 
-        if not wallet_activities.empty and "merchant_id" in wallet_activities.columns:
+        # New backend schema:
+        # WalletActivity.user_id references centralized User.
+        if not wallet_activities.empty and "user_id" in wallet_activities.columns:
+            merchant_wallet = wallet_activities[wallet_activities["user_id"].astype(str) == merchant_user_id].copy()
+        elif not wallet_activities.empty and "merchant_id" in wallet_activities.columns:
             merchant_wallet = wallet_activities[wallet_activities["merchant_id"].astype(str) == merchant_id].copy()
         else:
             merchant_wallet = pd.DataFrame()
@@ -146,7 +174,7 @@ def build_features() -> pd.DataFrame:
         else:
             merchant_psy = pd.DataFrame()
 
-        # Transactions
+        # Transaction features
         if not merchant_tx.empty and "transaction_time" in merchant_tx.columns:
             merchant_tx["transaction_time"] = pd.to_datetime(merchant_tx["transaction_time"], errors="coerce")
             active_days = merchant_tx["transaction_time"].dt.date.nunique()
@@ -160,17 +188,23 @@ def build_features() -> pd.DataFrame:
         else:
             success_tx = merchant_tx
 
-        total_revenue = success_tx["amount"].sum() if not success_tx.empty and "amount" in success_tx.columns else 0
-        monthly_revenue_avg = total_revenue / 6
+        if not success_tx.empty and "amount" in success_tx.columns:
+            total_revenue = float(success_tx["amount"].sum())
+            monthly_revenue_avg = total_revenue / 6
+        else:
+            total_revenue = 0
+            monthly_revenue_avg = 0
 
         payment_channel_count = success_tx["payment_channel"].nunique() if not success_tx.empty and "payment_channel" in success_tx.columns else 1
 
-        if not merchant_tx.empty and tx_sender_col:
-            unique_customers = merchant_tx[tx_sender_col].nunique()
+        # Customer diversity from sender_id users
+        sender_col = first_existing_col(merchant_tx, ["sender_id", "sender_code", "customer_id"])
+        if not merchant_tx.empty and sender_col:
+            unique_customers = merchant_tx[sender_col].nunique()
             total_tx = len(merchant_tx)
             transaction_gravity_score = clamp(unique_customers / 100)
             customer_diversity_score = clamp(unique_customers / max(total_tx, 1) * 5)
-            repeat_counts = merchant_tx.groupby(tx_sender_col).size()
+            repeat_counts = merchant_tx.groupby(sender_col).size()
             repeat_customer_ratio = clamp((repeat_counts > 1).sum() / max(unique_customers, 1))
         else:
             transaction_gravity_score = 0
@@ -185,11 +219,7 @@ def build_features() -> pd.DataFrame:
         if not merchant_tx.empty and "status" in merchant_tx.columns:
             failed_payment_rate = len(merchant_tx[merchant_tx["status"] == "FAILED"]) / max(len(merchant_tx), 1)
 
-        transaction_growth_rate = (
-            merchant_tx["transaction_growth_rate"].mean()
-            if not merchant_tx.empty and "transaction_growth_rate" in merchant_tx.columns
-            else 0
-        )
+        transaction_growth_rate = merchant_tx["transaction_growth_rate"].mean() if not merchant_tx.empty and "transaction_growth_rate" in merchant_tx.columns else 0
         suspicious_spike_score = clamp(abs(transaction_growth_rate))
 
         supplier_payment_ratio = 0
@@ -197,10 +227,16 @@ def build_features() -> pd.DataFrame:
             supplier_outflow = merchant_tx[merchant_tx["transaction_type"] == "SUPPLIER_PAYMENT"]["amount"].sum()
             supplier_payment_ratio = clamp(supplier_outflow / max(merchant_tx["amount"].sum(), 1))
 
-        # Wallet
+        # Wallet features
         if not merchant_wallet.empty and "amount" in merchant_wallet.columns and "activity_type" in merchant_wallet.columns:
-            money_in = merchant_wallet[merchant_wallet["activity_type"].isin(["PAYMENT_RECEIVED", "CASH_IN", "REMITTANCE_RECEIVED"])]["amount"].sum()
-            money_out = merchant_wallet[merchant_wallet["activity_type"].isin(["CASH_OUT", "SUPPLIER_PAYMENT", "BILL_PAYMENT", "LOAN_REPAYMENT"])]["amount"].sum()
+            money_in = merchant_wallet[
+                merchant_wallet["activity_type"].isin(["PAYMENT_RECEIVED", "CASH_IN", "REMITTANCE_RECEIVED"])
+            ]["amount"].sum()
+
+            money_out = merchant_wallet[
+                merchant_wallet["activity_type"].isin(["CASH_OUT", "SUPPLIER_PAYMENT", "BILL_PAYMENT", "LOAN_REPAYMENT"])
+            ]["amount"].sum()
+
             wallet_velocity_score = clamp(min(money_in, money_out) / max(money_in, 1))
 
             cashout_amount = merchant_wallet[merchant_wallet["activity_type"] == "CASH_OUT"]["amount"].sum()
@@ -216,12 +252,8 @@ def build_features() -> pd.DataFrame:
         else:
             liquidity_buffer_score = 0.4
 
-        # Utility and digital footprint
-        utility_delay_avg = (
-            merchant_util["days_late"].mean()
-            if not merchant_util.empty and "days_late" in merchant_util.columns
-            else 20
-        )
+        # Utility and smart footprint
+        utility_delay_avg = merchant_util["days_late"].mean() if not merchant_util.empty and "days_late" in merchant_util.columns else 20
         utility_calibration_score = clamp(1 - utility_delay_avg / 30)
 
         if not merchant_util.empty and "bill_type" in merchant_util.columns:
@@ -243,30 +275,32 @@ def build_features() -> pd.DataFrame:
             remittance_amount = merchant_wallet[merchant_wallet["activity_type"] == "REMITTANCE_RECEIVED"]["amount"].sum()
             remittance_security_score = clamp(remittance_amount / 50000)
 
-        # Loans and repayments
-        requested_amount = (
-            merchant_loans["requested_amount"].iloc[0]
-            if not merchant_loans.empty and "requested_amount" in merchant_loans.columns
-            else 0
-        )
+        # Loan features
+        requested_amount = merchant_loans["requested_amount"].iloc[0] if not merchant_loans.empty and "requested_amount" in merchant_loans.columns else 0
         loan_to_income_ratio = requested_amount / max(monthly_revenue_avg, 1)
 
+        # Repayment target
         repayment_outcome = "GOOD"
         default_label = 0
         repayment_consistency_score = 0.6
 
-        if not merchant_repayments.empty and "repayment_status" in merchant_repayments.columns:
-            statuses = merchant_repayments["repayment_status"].astype(str)
-            on_time = statuses.isin(["PAID_ON_TIME"]).sum()
-            late = statuses.isin(["PAID_LATE", "MISSED"]).sum()
-            default = statuses.isin(["DEFAULT"]).sum()
-            repayment_consistency_score = clamp((on_time + late * 0.5) / max(len(statuses), 1))
+        if not merchant_repayments.empty:
+            if "ml_target_default" in merchant_repayments.columns:
+                default_label = int(merchant_repayments["ml_target_default"].max())
 
-            if default > 0:
-                repayment_outcome = "DEFAULT"
-                default_label = 1
-            elif late > on_time:
-                repayment_outcome = "LATE"
+            if "repayment_status" in merchant_repayments.columns:
+                statuses = merchant_repayments["repayment_status"].astype(str)
+                on_time = statuses.isin(["PAID_ON_TIME"]).sum()
+                late = statuses.isin(["PAID_LATE", "MISSED"]).sum()
+                default = statuses.isin(["DEFAULT"]).sum()
+
+                repayment_consistency_score = clamp((on_time + late * 0.5) / max(len(statuses), 1))
+
+                if default > 0 or default_label == 1:
+                    repayment_outcome = "DEFAULT"
+                    default_label = 1
+                elif late > on_time:
+                    repayment_outcome = "LATE"
 
         # Psychometric
         if not merchant_psy.empty and "normalized_score" in merchant_psy.columns:
@@ -274,7 +308,6 @@ def build_features() -> pd.DataFrame:
         elif not merchant_psy.empty and "answer_score" in merchant_psy.columns:
             psychometric_avg = merchant_psy["answer_score"].mean() * 10
         else:
-            # Neutral score until psychometric APIs are active
             psychometric_avg = 500
 
         conscientiousness_score = clamp(psychometric_avg / 1000)
@@ -291,14 +324,12 @@ def build_features() -> pd.DataFrame:
         guarantor_health_score = graph.get("guarantor_health_score", 0.4)
         collusion_risk_score = graph.get("collusion_risk_score", 0.5)
 
-        if business_type in ["AGRICULTURE", "VEGETABLE_SHOP", "FRUIT_SHOP"]:
-            seasonal_pattern_score = 0.85
-        else:
-            seasonal_pattern_score = 0.45
+        seasonal_pattern_score = 0.85 if business_type in ["AGRICULTURE", "VEGETABLE_SHOP", "FRUIT_SHOP"] else 0.45
 
         row = {
             "merchant_id": merchant_id,
             "merchant_code": merchant_code,
+            "merchant_user_id": merchant_user_id,
             "business_type": business_type,
             "wallet_age_months": merchant.get("wallet_age_months", 0),
 
@@ -346,16 +377,25 @@ def build_features() -> pd.DataFrame:
         }
 
         row.update(calculate_rule_score(row))
+
+        # Synthetic labels are applied only when real repayment labels are absent.
+        if merchant_repayments.empty and GENERATE_SYNTHETIC_LABELS:
+            synthetic_outcome, synthetic_default = derive_synthetic_target(row)
+            row["repayment_outcome"] = synthetic_outcome
+            row["default_label"] = synthetic_default
+
         rows.append(row)
 
-    output = pd.DataFrame(rows)
+    dataset = pd.DataFrame(rows)
     output_path = PROCESSED_DATA_DIR / "merchant_training_dataset.csv"
-    output.to_csv(output_path, index=False)
+    dataset.to_csv(output_path, index=False)
 
     logger.info(f"Saved processed dataset: {output_path}")
-    logger.info(f"Rows: {len(output)}")
+    logger.info(f"Total merchants processed: {len(dataset)}")
+    if "default_label" in dataset.columns:
+        logger.info(f"Target distribution: {dataset['default_label'].value_counts().to_dict()}")
 
-    return output
+    return dataset
 
 
 def main():

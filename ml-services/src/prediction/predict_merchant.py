@@ -1,8 +1,9 @@
 import json
 import joblib
 import pandas as pd
+from datetime import datetime, timezone
 
-from src.common.config import PROCESSED_DATA_DIR, MODEL_DIR
+from src.common.config import PROCESSED_DATA_DIR, MODEL_DIR, PREDICTIONS_DIR
 from src.prediction.loan_recommendation import recommend_loan
 
 
@@ -57,25 +58,26 @@ def get_risk_factors(row: dict) -> list[str]:
 
 def predict_merchant(merchant_id: str) -> dict:
     df = load_dataset()
-    rows = df[df["merchant_id"].astype(str) == str(merchant_id)]
+    merchant_rows = df[df["merchant_id"].astype(str) == str(merchant_id)]
 
-    if rows.empty:
-        # fallback also check merchant_code if exists
-        if "merchant_code" in df.columns:
-            rows = df[df["merchant_code"].astype(str) == str(merchant_id)]
+    if merchant_rows.empty and "merchant_code" in df.columns:
+        merchant_rows = df[df["merchant_code"].astype(str) == str(merchant_id)]
 
-    if rows.empty:
+    if merchant_rows.empty and "merchant_user_id" in df.columns:
+        merchant_rows = df[df["merchant_user_id"].astype(str) == str(merchant_id)]
+
+    if merchant_rows.empty:
         raise ValueError(f"Merchant not found in processed dataset: {merchant_id}")
 
-    row = rows.iloc[0].to_dict()
+    row = merchant_rows.iloc[0].to_dict()
 
     model_path = MODEL_DIR / "credit_risk_model.pkl"
-    features_path = MODEL_DIR / "feature_columns.json"
+    feature_path = MODEL_DIR / "feature_columns.json"
 
-    if model_path.exists() and features_path.exists():
+    if model_path.exists() and feature_path.exists():
         model = joblib.load(model_path)
-        with open(features_path) as f:
-            feature_columns = json.load(f)
+        with open(feature_path, encoding="utf-8") as file:
+            feature_columns = json.load(file)
 
         x = pd.DataFrame([row])[feature_columns].fillna(0)
 
@@ -84,23 +86,25 @@ def predict_merchant(merchant_id: str) -> dict:
         else:
             default_probability = float(model.predict(x)[0])
     else:
-        # fallback if model has not been trained yet
-        default_probability = 1 - (float(row.get("rule_based_sajilo_score", 500)) / 1000)
+        # Rule-based fallback before training.
+        rule_score = float(row.get("rule_based_sajilo_score", 500))
+        default_probability = 1 - (rule_score / 1000)
 
     repayment_probability = 1 - default_probability
     ml_repayment_score = round(repayment_probability * 1000)
 
-    rule_score = int(row.get("rule_based_sajilo_score", ml_repayment_score))
+    rule_based_score = int(row.get("rule_based_sajilo_score", ml_repayment_score))
     fraud_penalty = int(row.get("fraud_penalty", 0))
 
-    # Blend rule engine and ML output
-    final_score = round((rule_score * 0.60) + (ml_repayment_score * 0.40))
+    final_score = round((rule_based_score * 0.60) + (ml_repayment_score * 0.40))
     final_score = max(0, min(1000, final_score))
 
     loan = recommend_loan(row, final_score, fraud_penalty)
 
-    return {
+    result = {
         "merchant_id": str(row["merchant_id"]),
+        "merchant_code": str(row.get("merchant_code", "")),
+        "merchant_user_id": str(row.get("merchant_user_id", "")),
         "scores": {
             "f1_livelihood_rhythm": int(row.get("f1_livelihood_rhythm", 0)),
             "f2_cash_flow_elasticity": int(row.get("f2_cash_flow_elasticity", 0)),
@@ -108,7 +112,7 @@ def predict_merchant(merchant_id: str) -> dict:
             "f4_community_trust_graph": int(row.get("f4_community_trust_graph", 0)),
             "f5_psychometric": int(row.get("f5_psychometric", 0)),
             "fraud_penalty": fraud_penalty,
-            "rule_based_sajilo_score": rule_score,
+            "rule_based_sajilo_score": rule_based_score,
             "ml_repayment_score": ml_repayment_score,
             "final_sajilo_score": final_score,
         },
@@ -125,4 +129,12 @@ def predict_merchant(merchant_id: str) -> dict:
             "positive_factors": get_positive_factors(row),
             "risk_factors": get_risk_factors(row),
         },
+        "predicted_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    # Save latest prediction output for audit/demo.
+    out_path = PREDICTIONS_DIR / f"{result['merchant_id']}_prediction.json"
+    with open(out_path, "w", encoding="utf-8") as file:
+        json.dump(result, file, indent=2)
+
+    return result

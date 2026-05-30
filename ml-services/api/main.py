@@ -22,13 +22,15 @@ app.add_middleware(
 def root():
     return {
         "service": "SajiloScore ML Service",
-        "status": "running"
+        "status": "running",
     }
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+    }
 
 
 @app.get("/predict/{merchant_id}")

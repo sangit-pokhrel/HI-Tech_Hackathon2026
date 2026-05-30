@@ -10,10 +10,9 @@ def score_f1_livelihood_rhythm(row: dict) -> int:
     '''
     F1: Livelihood Rhythm & Transaction Consistency
     Max = 200
-
-    F1.1 Sector-calibrated livelihood cycle = 80
-    F1.2 B2B supplier integration = 60
-    F1.3 Digital wallet velocity = 60
+    - Sector livelihood rhythm: 80
+    - Supplier/B2B payment integration: 60
+    - Wallet velocity: 60
     '''
     business_type = row.get("business_type", "OTHER")
 
@@ -22,16 +21,15 @@ def score_f1_livelihood_rhythm(row: dict) -> int:
     supplier_payment_ratio = clamp(row.get("supplier_payment_ratio", 0))
     wallet_velocity_score = clamp(row.get("wallet_velocity_score", 0))
 
-    daily_types = {
+    daily_businesses = {
         "TEA_SHOP", "GROCERY", "RESTAURANT", "SNACK_SHOP",
         "PHARMACY", "DAIRY_SHOP", "BAKERY"
     }
+    seasonal_businesses = {"AGRICULTURE", "VEGETABLE_SHOP", "FRUIT_SHOP"}
 
-    seasonal_types = {"AGRICULTURE", "VEGETABLE_SHOP", "FRUIT_SHOP"}
-
-    if business_type in seasonal_types:
+    if business_type in seasonal_businesses:
         cycle_score = seasonal_pattern_score * 80
-    elif business_type in daily_types:
+    elif business_type in daily_businesses:
         cycle_score = active_days_ratio * 80
     else:
         cycle_score = ((active_days_ratio * 0.7) + (seasonal_pattern_score * 0.3)) * 80

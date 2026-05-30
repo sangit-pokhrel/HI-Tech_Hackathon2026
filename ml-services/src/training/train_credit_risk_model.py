@@ -13,7 +13,6 @@ from src.common.config import PROCESSED_DATA_DIR, MODEL_DIR, METRICS_DIR
 from src.common.logger import logger
 
 DATASET_PATH = PROCESSED_DATA_DIR / "merchant_training_dataset.csv"
-
 TARGET = "default_label"
 
 FEATURE_COLUMNS = [
@@ -51,7 +50,7 @@ FEATURE_COLUMNS = [
 ]
 
 
-def evaluate(model, x_train, x_test, y_train, y_test):
+def evaluate_model(model, x_train, x_test, y_train, y_test):
     model.fit(x_train, y_train)
     y_pred = model.predict(x_test)
 
@@ -60,13 +59,15 @@ def evaluate(model, x_train, x_test, y_train, y_test):
     else:
         y_prob = y_pred
 
-    return {
+    metrics = {
         "accuracy": accuracy_score(y_test, y_pred),
         "precision": precision_score(y_test, y_pred, zero_division=0),
         "recall": recall_score(y_test, y_pred, zero_division=0),
         "f1_score": f1_score(y_test, y_pred, zero_division=0),
         "roc_auc": roc_auc_score(y_test, y_prob) if len(set(y_test)) > 1 else 0,
-    }, model
+    }
+
+    return model, metrics
 
 
 def main():
@@ -74,23 +75,31 @@ def main():
         raise FileNotFoundError("merchant_training_dataset.csv not found. Run build_features first.")
 
     df = pd.read_csv(DATASET_PATH)
+
+    missing = [col for col in FEATURE_COLUMNS if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing feature columns: {missing}")
+
     x = df[FEATURE_COLUMNS].fillna(0)
     y = df[TARGET].astype(int)
 
     if len(set(y)) < 2:
-        logger.warning("Only one target class found. Model training will still run, but predictions will not be useful.")
+        raise ValueError(
+            "Only one class exists in default_label. "
+            "Add repayment_records with ml_target_default 0/1 or enable GENERATE_SYNTHETIC_LABELS=true."
+        )
 
-    stratify = y if len(set(y)) > 1 else None
+    stratify_value = y if y.value_counts().min() >= 2 else None
 
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,
         test_size=0.2,
         random_state=42,
-        stratify=stratify,
+        stratify=stratify_value,
     )
 
-    candidates = {
+    candidate_models = {
         "logistic_regression": Pipeline([
             ("scaler", StandardScaler()),
             ("model", LogisticRegression(max_iter=1000, class_weight="balanced")),
@@ -104,33 +113,43 @@ def main():
         "gradient_boosting": GradientBoostingClassifier(random_state=42),
     }
 
-    metrics = {}
-    trained = {}
+    trained_models = {}
+    all_metrics = {}
 
-    for name, model in candidates.items():
+    for name, model in candidate_models.items():
         try:
-            result, fitted = evaluate(model, x_train, x_test, y_train, y_test)
-            metrics[name] = result
-            trained[name] = fitted
-            logger.info(f"{name}: {result}")
+            trained_model, metrics = evaluate_model(model, x_train, x_test, y_train, y_test)
+            trained_models[name] = trained_model
+            all_metrics[name] = metrics
+            logger.info(f"{name}: {metrics}")
         except Exception as error:
             logger.error(f"Training failed for {name}: {error}")
 
-    if not metrics:
-        raise RuntimeError("No models trained successfully.")
+    if not trained_models:
+        raise RuntimeError("No model trained successfully.")
 
-    best_name = max(metrics, key=lambda n: metrics[n]["f1_score"])
-    best_model = trained[best_name]
+    best_model_name = max(all_metrics, key=lambda name: all_metrics[name]["f1_score"])
+    best_model = trained_models[best_model_name]
 
     joblib.dump(best_model, MODEL_DIR / "credit_risk_model.pkl")
 
-    with open(MODEL_DIR / "feature_columns.json", "w") as f:
-        json.dump(FEATURE_COLUMNS, f, indent=2)
+    with open(MODEL_DIR / "feature_columns.json", "w", encoding="utf-8") as file:
+        json.dump(FEATURE_COLUMNS, file, indent=2)
 
-    with open(METRICS_DIR / "credit_risk_metrics.json", "w") as f:
-        json.dump({"best_model": best_name, "metrics": metrics}, f, indent=2)
+    with open(METRICS_DIR / "credit_risk_metrics.json", "w", encoding="utf-8") as file:
+        json.dump(
+            {
+                "best_model": best_model_name,
+                "metrics": all_metrics,
+                "training_records": int(len(df)),
+                "feature_count": len(FEATURE_COLUMNS),
+                "target_distribution": {str(k): int(v) for k, v in y.value_counts().to_dict().items()},
+            },
+            file,
+            indent=2,
+        )
 
-    logger.info(f"Saved best model: {best_name}")
+    logger.info(f"Saved best model: {best_model_name}")
 
 
 if __name__ == "__main__":
