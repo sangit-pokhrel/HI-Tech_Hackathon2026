@@ -1,8 +1,8 @@
-# Bun Super Fast MongoDB Backend Template
+# Sajilo Score Fast MongoDB Backend Template
 
 A high-performance, developer-friendly backend template powered by **Bun**, featuring **Elysia.js** (the fastest Bun web framework) and **MongoDB** connected via **Mongoose**. 
 
-This template has **no authentication gates**, leaving all API CRUD operations fully open.
+All endpoints are fully open (no authentication required) to support fast fintech prototype iterations.
 
 ## Tech Stack
 * **Runtime**: [Bun](https://bun.sh)
@@ -13,28 +13,24 @@ This template has **no authentication gates**, leaving all API CRUD operations f
 
 ## Quick Start
 
-### 1. Pre-requisites
-Ensure you have **MongoDB** running locally on your system, standard URI `mongodb://127.0.0.1:27017/nagarikcredits`.
+### 1. Configure Environment Variables
+Copy `.env.example` into a new `.env` file and set your `MONGODB_URI`:
+```bash
+cp .env.example .env
+```
 
 ### 2. Install Dependencies
 ```bash
 bun install
 ```
 
-### 3. Configure Environment Variables
-Copy `.env.example` into a new `.env` file:
-```bash
-cp .env.example .env
-```
-
-### 4. Start Development Server
+### 3. Start Development Server
 ```bash
 bun run dev
 ```
-
 The server will boot at `http://localhost:3000`.
 
-### 5. Interactive Swagger Documentation
+### 4. Interactive Swagger Documentation
 Open your browser and navigate to:
 ```
 http://localhost:3000/swagger
@@ -49,9 +45,13 @@ backend/
 ├── src/
 │   ├── db/
 │   │   ├── db.ts          # MongoDB client connection wrapper
-│   │   └── schema.ts      # Mongoose User schema definition
+│   │   └── schema.ts      # Mongoose Schemas (Merchant, Customer, Transaction, UtilityPayment, WalletActivity)
+│   ├── controllers/
+│   │   ├── merchant.controller.ts  # CRUD logical handlers for Merchants
+│   │   └── customer.controller.ts  # CRUD logical handlers for Customers
 │   ├── routes/
-│   │   └── user.routes.ts # Open CRUD endpoints
+│   │   ├── merchant.routes.ts      # Merchant endpoint routers
+│   │   └── customer.routes.ts      # Customer endpoint routers
 │   └── index.ts           # Main entry point (middleware, Swagger config)
 ├── tsconfig.json          # TypeScript config optimized for Bun
 └── package.json           # Scripts and dependencies
@@ -59,62 +59,18 @@ backend/
 
 ---
 
-## Available NPM Scripts
-* `bun run dev` - Starts the development server with hot-reloading active.
-* `bun run build` - Compiles the TypeScript application into Bun-target production bundle under `dist/`.
+## Open API Endpoints Reference
 
----
+### Merchants API (`/api/merchants`)
+* `POST /api/merchants` - Create a new merchant profile.
+* `GET /api/merchants` - Fetch all merchants.
+* `GET /api/merchants/:id` - Fetch specific merchant details by ID.
+* `PUT /api/merchants/:id` - Update specific merchant details by ID.
+* `DELETE /api/merchants/:id` - Remove merchant by ID.
 
-## Open API Documentation Reference
-
-All routes are fully open with **no authentication or headers** required.
-
-### Users CRUD Endpoints
-
-#### `POST /users`
-Creates a new user profile.
-* **Body Schema**:
-  ```json
-  {
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "age": 28,
-    "bio": "Developer"
-  }
-  ```
-
-#### `GET /users`
-Retrieves a list of all users, sorted by creation date (newest first).
-* **Response**:
-  ```json
-  {
-    "success": true,
-    "data": [
-      {
-        "_id": "6a195aecfe7fe43f1c2681e1",
-        "name": "Jane Doe",
-        "email": "jane@example.com",
-        "age": 28,
-        "bio": "Developer",
-        "createdAt": "2026-05-29T09:00:00.000Z",
-        "updatedAt": "2026-05-29T09:00:00.000Z"
-      }
-    ]
-  }
-  ```
-
-#### `GET /users/:id`
-Retrieves user details by MongoDB Document ID.
-
-#### `PUT /users/:id`
-Updates fields on a user profile. Supports partial updates.
-* **Body Schema**:
-  ```json
-  {
-    "bio": "Lead Developer",
-    "age": 29
-  }
-  ```
-
-#### `DELETE /users/:id`
-Permanently removes the user profile.
+### Customers API (`/api/customers`)
+* `POST /api/customers` - Create a new customer profile.
+* `GET /api/customers` - Fetch all customers.
+* `GET /api/customers/:id` - Fetch specific customer details by ID.
+* `PUT /api/customers/:id` - Update customer by ID.
+* `DELETE /api/customers/:id` - Remove customer by ID.

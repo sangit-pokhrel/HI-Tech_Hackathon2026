@@ -2,7 +2,8 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { connectDB } from "./db/db";
-import { userRoutes } from "./routes/user.routes";
+import { merchantRoutes } from "./routes/merchant.routes";
+import { customerRoutes } from "./routes/customer.routes";
 
 const port = process.env.PORT || 3000;
 
@@ -17,9 +18,9 @@ const app = new Elysia()
     swagger({
       documentation: {
         info: {
-          title: "Bun + MongoDB Fast Backend API Documentation",
+          title: "Sajilo Score Fast Backend API Documentation",
           version: "1.0.0",
-          description: "High-performance Elysia.js + MongoDB open CRUD API template",
+          description: "High-performance Elysia.js + MongoDB open CRUD API template for micro-merchants in Nepal",
         },
       },
       path: "/swagger",
@@ -57,7 +58,7 @@ const app = new Elysia()
   // Root / Home endpoint
   .get("/", () => ({
     success: true,
-    message: "Bun Super Fast MongoDB Backend API is running!",
+    message: "Sajilo Score Super Fast MongoDB Backend API is running!",
     docs: "/swagger",
   }))
 
@@ -69,7 +70,8 @@ const app = new Elysia()
   }))
 
   // Mount Application Routes
-  .use(userRoutes)
+  .use(merchantRoutes)
+  .use(customerRoutes)
 
   // Start listening
   .listen(port);
