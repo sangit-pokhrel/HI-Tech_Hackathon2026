@@ -1,0 +1,20 @@
+{
+  "name": "bun-fast-backend-template",
+  "version": "1.0.0",
+  "description": "Super fast Elysia.js + MongoDB backend template powered by Bun",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir ./dist --target bun"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.0.2",
+    "@elysiajs/swagger": "^1.0.5",
+    "elysia": "^1.0.21",
+    "mongoose": "^8.4.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
