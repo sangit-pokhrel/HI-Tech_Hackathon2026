@@ -1,22 +1,72 @@
 import mongoose, { Schema, model } from "mongoose";
 
 // ==========================================
-// 1. MERCHANT SCHEMA & INTERFACE
+// 1. CENTRALIZED USER SCHEMA & INTERFACE
 // ==========================================
-export interface IMerchant {
-  _id: string;
-  merchant_code: string;
-  merchant_name: string;
-  owner_name: string;
-  phone_number: string;
-  business_type: string;
-  registration_status: string;
+export interface IUser {
+  _id: string; // Custom ID like USR-00001
+  user_code: string;
+  name: string;
+  phone: string;
+  user_type: string; // MERCHANT, CUSTOMER, BOTH
   location: {
     province?: string;
     district: string;
     municipality: string;
     ward_no: number;
   };
+  verified_status: string; // verified, unverified
+  balance: number;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+const userSchema = new Schema<IUser>(
+  {
+    _id: { type: String, required: true },
+    user_code: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    phone: { type: String, required: true, unique: true },
+    user_type: {
+      type: String,
+      required: true,
+      enum: ["MERCHANT", "CUSTOMER", "BOTH"],
+      default: "CUSTOMER",
+    },
+    location: {
+      province: { type: String, default: "Bagmati" },
+      district: { type: String, required: true },
+      municipality: { type: String, required: true },
+      ward_no: { type: Number, required: true, min: 1 },
+    },
+    verified_status: {
+      type: String,
+      required: true,
+      enum: ["verified", "unverified"],
+      default: "unverified",
+    },
+    balance: { type: Number, required: true, default: 0, min: 0 },
+    is_active: { type: Boolean, default: true },
+  },
+  {
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+    _id: false,
+  }
+);
+
+export const User = mongoose.models.User || model<IUser>("User", userSchema);
+
+// ==========================================
+// 2. MERCHANT PROFILE SCHEMA & INTERFACE
+// ==========================================
+export interface IMerchant {
+  _id: string; // Custom ID like MRC-00001
+  user_id: string; // Ref to centralized User
+  merchant_code: string;
+  merchant_name: string;
+  business_type: string;
+  registration_status: string;
   wallet_age_months: number;
   business_started_year?: number;
   is_active: boolean;
@@ -27,10 +77,9 @@ export interface IMerchant {
 const merchantSchema = new Schema<IMerchant>(
   {
     _id: { type: String, required: true },
+    user_id: { type: String, ref: "User", required: true, unique: true },
     merchant_code: { type: String, required: true, unique: true },
     merchant_name: { type: String, required: true },
-    owner_name: { type: String, required: true },
-    phone_number: { type: String, required: true, unique: true },
     business_type: {
       type: String,
       required: true,
@@ -47,12 +96,6 @@ const merchantSchema = new Schema<IMerchant>(
       enum: ["registered", "unregistered", "in_process"],
       default: "unregistered",
     },
-    location: {
-      province: { type: String, default: "Bagmati" },
-      district: { type: String, required: true },
-      municipality: { type: String, required: true },
-      ward_no: { type: Number, required: true, min: 1 },
-    },
     wallet_age_months: { type: Number, required: true, min: 0 },
     business_started_year: { type: Number },
     is_active: { type: Boolean, default: true },
@@ -63,66 +106,43 @@ const merchantSchema = new Schema<IMerchant>(
   }
 );
 
-merchantSchema.index({ business_type: 1 });
-merchantSchema.index({ "location.district": 1 });
-
 export const Merchant = mongoose.models.Merchant || model<IMerchant>("Merchant", merchantSchema);
 
 // ==========================================
-// 2. CUSTOMER SCHEMA & INTERFACE
+// 3. CUSTOMER PROFILE SCHEMA & INTERFACE
 // ==========================================
 export interface ICustomer {
-  _id: string;
+  _id: string; // Custom ID like CUS-00001
+  user_id: string; // Ref to centralized User
   customer_code: string;
   customer_name: string;
-  phone_number?: string;
-  location: {
-    province?: string;
-    district: string;
-    municipality: string;
-    ward_no: number;
-  };
   created_at: Date;
-  verified_status: string;
-  balance: number;
+  updated_at: Date;
 }
 
 const customerSchema = new Schema<ICustomer>(
   {
     _id: { type: String, required: true },
+    user_id: { type: String, ref: "User", required: true, unique: true },
     customer_code: { type: String, required: true, unique: true },
     customer_name: { type: String, required: true },
-    phone_number: { type: String },
-    location: {
-      province: { type: String, default: "Bagmati" },
-      district: { type: String, required: true },
-      municipality: { type: String, required: true },
-      ward_no: { type: Number, required: true, min: 1 },
-    },
-    created_at: { type: Date, default: Date.now },
-    verified_status: {
-      type: String,
-      required: true,
-      enum: ["verified", "unverified"],
-      default: "unverified",
-    },
-    balance: { type: Number, required: true, default: 0, min: 0 },
   },
-  { _id: false }
+  {
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+    _id: false,
+  }
 );
 
 export const Customer = mongoose.models.Customer || model<ICustomer>("Customer", customerSchema);
 
 // ==========================================
-// 3. TRANSACTION SCHEMA & INTERFACE
+// 4. TRANSACTION SCHEMA & INTERFACE
 // ==========================================
 export interface ITransaction {
   _id: string;
   transaction_code: string;
-  sender_code: string;
-  sender_name: string;
-  receiver_code: string;
-  receiver_name: string;
+  sender_id: string; // Ref to User (centralized sender)
+  receiver_id: string; // Ref to User (centralized receiver)
   amount: number;
   transaction_type: string;
   status: string;
@@ -143,10 +163,8 @@ const transactionSchema = new Schema<ITransaction>(
   {
     _id: { type: String, required: true },
     transaction_code: { type: String, required: true },
-    sender_code: { type: String, required: true },
-    sender_name: { type: String, required: true },
-    receiver_code: { type: String, required: true },
-    receiver_name: { type: String, required: true },
+    sender_id: { type: String, ref: "User", required: true },
+    receiver_id: { type: String, ref: "User", required: true },
     amount: { type: Number, required: true, min: 0 },
     transaction_type: {
       type: String,
@@ -182,20 +200,19 @@ const transactionSchema = new Schema<ITransaction>(
 );
 
 transactionSchema.index({ transaction_code: 1 });
-transactionSchema.index({ sender_code: 1 });
-transactionSchema.index({ receiver_code: 1 });
+transactionSchema.index({ sender_id: 1 });
+transactionSchema.index({ receiver_id: 1 });
 transactionSchema.index({ transaction_time: -1 });
 
 export const Transaction = mongoose.models.Transaction || model<ITransaction>("Transaction", transactionSchema);
 
 // ==========================================
-// 4. UTILITY PAYMENT SCHEMA & INTERFACE
+// 5. UTILITY PAYMENT SCHEMA & INTERFACE
 // ==========================================
 export interface IUtilityPayment {
   _id: string;
-  merchant_id: string;
-  sender_id: string;
-  sender_name: string;
+  merchant_id: string; // Ref to Merchant Profile
+  sender_id: string; // Ref to User (who paid)
   bill_type: string;
   bill_amount: number;
   due_date: Date;
@@ -209,8 +226,7 @@ const utilityPaymentSchema = new Schema<IUtilityPayment>(
   {
     _id: { type: String, required: true },
     merchant_id: { type: String, ref: "Merchant", required: true },
-    sender_id: { type: String, required: true },
-    sender_name: { type: String, required: true },
+    sender_id: { type: String, ref: "User", required: true },
     bill_type: {
       type: String,
       required: true,
@@ -237,11 +253,11 @@ utilityPaymentSchema.index({ sender_id: 1 });
 export const UtilityPayment = mongoose.models.UtilityPayment || model<IUtilityPayment>("UtilityPayment", utilityPaymentSchema);
 
 // ==========================================
-// 5. WALLET ACTIVITY SCHEMA & INTERFACE
+// 6. WALLET ACTIVITY SCHEMA & INTERFACE
 // ==========================================
 export interface IWalletActivity {
   _id: string;
-  merchant_id: string;
+  user_id: string; // Ref to centralized User wallet
   activity_type: string;
   amount: number;
   balance_after_transaction: number;
@@ -252,7 +268,7 @@ export interface IWalletActivity {
 const walletActivitySchema = new Schema<IWalletActivity>(
   {
     _id: { type: String, required: true },
-    merchant_id: { type: String, ref: "Merchant", required: true },
+    user_id: { type: String, ref: "User", required: true },
     activity_type: {
       type: String,
       required: true,
@@ -269,7 +285,7 @@ const walletActivitySchema = new Schema<IWalletActivity>(
   { _id: false }
 );
 
-walletActivitySchema.index({ merchant_id: 1 });
-walletActivitySchema.index({ merchant_id: 1, activity_time: -1 });
+walletActivitySchema.index({ user_id: 1 });
+walletActivitySchema.index({ activity_time: -1 });
 
 export const WalletActivity = mongoose.models.WalletActivity || model<IWalletActivity>("WalletActivity", walletActivitySchema);

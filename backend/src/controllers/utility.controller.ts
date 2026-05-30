@@ -1,4 +1,4 @@
-import { UtilityPayment } from "../db/schema";
+import { UtilityPayment, User } from "../db/schema";
 
 export const getUtilityPayments = async ({ query, set }: any) => {
   try {
@@ -10,6 +10,9 @@ export const getUtilityPayments = async ({ query, set }: any) => {
 
     if (query.merchant_id) {
       filter.merchant_id = query.merchant_id;
+    }
+    if (query.sender_id) {
+      filter.sender_id = query.sender_id;
     }
     if (query.bill_type) {
       filter.bill_type = query.bill_type;
@@ -45,6 +48,14 @@ export const getUtilityPayments = async ({ query, set }: any) => {
 
 export const createUtilityPayment = async ({ body, set }: any) => {
   try {
+    const sender = await User.findById(body.sender_id);
+    if (!sender) {
+      throw new Error("Sender User profile not found");
+    }
+    if (sender.verified_status !== "verified") {
+      throw new Error("Sender user is not KYC verified");
+    }
+
     const newPayment = new UtilityPayment(body);
     const savedPayment = await newPayment.save();
     set.status = 201;

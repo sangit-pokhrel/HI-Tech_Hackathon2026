@@ -5,7 +5,7 @@ export const walletRoutes = new Elysia({ prefix: "/api/wallet-activities" })
   .post("/", WalletController.createWalletActivity, {
     body: t.Object({
       _id: t.String({ minLength: 1 }),
-      merchant_id: t.String({ minLength: 1 }),
+      user_id: t.String({ minLength: 1 }),
       activity_type: t.String(),
       amount: t.Numeric({ minimum: 0 }),
       balance_after_transaction: t.Numeric(),
@@ -20,7 +20,7 @@ export const walletRoutes = new Elysia({ prefix: "/api/wallet-activities" })
     query: t.Object({
       limit: t.Optional(t.String()),
       page: t.Optional(t.String()),
-      merchant_id: t.Optional(t.String()),
+      user_id: t.Optional(t.String()),
       activity_type: t.Optional(t.String()),
     }),
     detail: {
@@ -42,7 +42,7 @@ export const walletRoutes = new Elysia({ prefix: "/api/wallet-activities" })
       id: t.String(),
     }),
     body: t.Object({
-      merchant_id: t.Optional(t.String()),
+      user_id: t.Optional(t.String()),
       activity_type: t.Optional(t.String()),
       amount: t.Optional(t.Numeric()),
       balance_after_transaction: t.Optional(t.Numeric()),

@@ -1,4 +1,4 @@
-import { WalletActivity } from "../db/schema";
+import { WalletActivity, User } from "../db/schema";
 
 export const getWalletActivities = async ({ query, set }: any) => {
   try {
@@ -8,8 +8,8 @@ export const getWalletActivities = async ({ query, set }: any) => {
 
     const filter: any = {};
 
-    if (query.merchant_id) {
-      filter.merchant_id = query.merchant_id;
+    if (query.user_id) {
+      filter.user_id = query.user_id;
     }
     if (query.activity_type) {
       filter.activity_type = query.activity_type;
@@ -42,6 +42,14 @@ export const getWalletActivities = async ({ query, set }: any) => {
 
 export const createWalletActivity = async ({ body, set }: any) => {
   try {
+    const user = await User.findById(body.user_id);
+    if (!user) {
+      throw new Error("User profile not found");
+    }
+    if (user.verified_status !== "verified") {
+      throw new Error("User is not KYC verified");
+    }
+
     const newActivity = new WalletActivity(body);
     const savedActivity = await newActivity.save();
     set.status = 201;

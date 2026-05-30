@@ -7,6 +7,8 @@ import { customerRoutes } from "./routes/customer.routes";
 import { transactionRoutes } from "./routes/transaction.routes";
 import { utilityRoutes } from "./routes/utility.routes";
 import { walletRoutes } from "./routes/wallet.routes";
+import { userRoutes } from "./routes/user.routes";
+import { scoringRoutes } from "./routes/scoring.routes";
 
 const port = process.env.PORT || 3000;
 
@@ -78,6 +80,8 @@ const app = new Elysia()
   .use(transactionRoutes)
   .use(utilityRoutes)
   .use(walletRoutes)
+  .use(userRoutes)
+  .use(scoringRoutes)
 
   // Start listening
   .listen(port);

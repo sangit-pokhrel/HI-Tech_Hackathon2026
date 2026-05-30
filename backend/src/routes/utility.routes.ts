@@ -7,7 +7,6 @@ export const utilityRoutes = new Elysia({ prefix: "/api/utility-payments" })
       _id: t.String({ minLength: 1 }),
       merchant_id: t.String({ minLength: 1 }),
       sender_id: t.String({ minLength: 1 }),
-      sender_name: t.String({ minLength: 1 }),
       bill_type: t.String(),
       bill_amount: t.Numeric({ minimum: 0 }),
       due_date: t.String(),
@@ -25,6 +24,7 @@ export const utilityRoutes = new Elysia({ prefix: "/api/utility-payments" })
       limit: t.Optional(t.String()),
       page: t.Optional(t.String()),
       merchant_id: t.Optional(t.String()),
+      sender_id: t.Optional(t.String()),
       bill_type: t.Optional(t.String()),
       payment_status: t.Optional(t.String()),
     }),
@@ -49,7 +49,6 @@ export const utilityRoutes = new Elysia({ prefix: "/api/utility-payments" })
     body: t.Object({
       merchant_id: t.Optional(t.String()),
       sender_id: t.Optional(t.String()),
-      sender_name: t.Optional(t.String()),
       bill_type: t.Optional(t.String()),
       bill_amount: t.Optional(t.Numeric()),
       due_date: t.Optional(t.String()),

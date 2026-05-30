@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { connectDB } from "./db";
-import { Merchant, Customer, Transaction, UtilityPayment, WalletActivity } from "./schema";
+import { User, Merchant, Customer, Transaction, UtilityPayment, WalletActivity } from "./schema";
 
 const businessTypes = [
   "TEA_SHOP", "GROCERY", "RESTAURANT", "VEGETABLE_SHOP", "PHARMACY",
@@ -89,62 +89,43 @@ async function seed() {
     console.log("🍃 Preparing connection to MongoDB testdb...");
     await connectDB();
 
-    console.log("🧹 Wiping old collections...");
-    await Merchant.deleteMany({});
-    await Customer.deleteMany({});
-    await Transaction.deleteMany({});
-    await UtilityPayment.deleteMany({});
-    await WalletActivity.deleteMany({});
+    console.log("🧹 Wiping old collections completely...");
+    try { await mongoose.connection.db.dropCollection("merchants"); } catch (e) {}
+    try { await mongoose.connection.db.dropCollection("customers"); } catch (e) {}
+    try { await mongoose.connection.db.dropCollection("users"); } catch (e) {}
+    try { await mongoose.connection.db.dropCollection("transactions"); } catch (e) {}
+    try { await mongoose.connection.db.dropCollection("utilitypayments"); } catch (e) {}
+    try { await mongoose.connection.db.dropCollection("walletactivities"); } catch (e) {}
 
-    const merchants: any[] = [];
-    const customers: any[] = [];
-    const transactions: any[] = [];
-    const walletActivities: any[] = [];
-    const utilityPayments: any[] = [];
-
-    // ==========================================
-    // 1. GENERATE 50 MERCHANTS
-    // ==========================================
-    console.log("Generating 50 micro-merchants...");
-    for (let i = 1; i <= 50; i++) {
-      const merchantId = `MRC-${String(i).padStart(5, "0")}`;
-      const districtIndex = randomInt(0, districts.length - 1);
-
-      merchants.push({
-        _id: merchantId,
-        merchant_code: merchantId,
-        merchant_name: merchantNames[i - 1] || `${pick(ownerNames)} shop`,
-        owner_name: ownerNames[i - 1] || pick(ownerNames),
-        phone_number: generatePhone("980", i),
-        business_type: pick(businessTypes),
-        registration_status: pick(["registered", "unregistered", "in_process"]),
-        location: {
-          province: "Bagmati",
-          district: districts[districtIndex],
-          municipality: municipalities[districtIndex],
-          ward_no: randomInt(1, 32)
-        },
-        wallet_age_months: randomInt(3, 48),
-        business_started_year: randomInt(2015, 2025),
-        is_active: true
-      });
-    }
-    await Merchant.insertMany(merchants);
-    console.log("✓ Merchants successfully seeded!");
+    const usersData: any[] = [];
+    const merchantsData: any[] = [];
+    const customersData: any[] = [];
+    const transactionsData: any[] = [];
+    const walletActivitiesData: any[] = [];
+    const utilityPaymentsData: any[] = [];
 
     // ==========================================
-    // 2. GENERATE 100 CUSTOMERS
+    // 1. GENERATE 100 CENTRALIZED USERS
     // ==========================================
-    console.log("Generating 100 customer profiles...");
+    console.log("Generating 100 centralized users...");
+    // 30 Merchants, 50 Customers, 20 BOTH (100 users total)
     for (let i = 1; i <= 100; i++) {
-      const customerId = `CUS-${String(i).padStart(5, "0")}`;
+      const userId = `USR-${String(i).padStart(5, "0")}`;
       const districtIndex = randomInt(0, districts.length - 1);
+      
+      let user_type = "CUSTOMER";
+      if (i <= 30) {
+        user_type = "MERCHANT";
+      } else if (i > 30 && i <= 50) {
+        user_type = "BOTH";
+      }
 
-      customers.push({
-        _id: customerId,
-        customer_code: customerId,
-        customer_name: `${pick(customerFirstNames)} ${pick(customerLastNames)}`,
-        phone_number: generatePhone("981", i),
+      usersData.push({
+        _id: userId,
+        user_code: userId,
+        name: i <= 50 ? ownerNames[i - 1] : `${pick(customerFirstNames)} ${pick(customerLastNames)}`,
+        phone: generatePhone("980", i),
+        user_type,
         location: {
           province: "Bagmati",
           district: districts[districtIndex],
@@ -152,122 +133,158 @@ async function seed() {
           ward_no: randomInt(1, 32)
         },
         verified_status: pick(["verified", "unverified"]),
-        balance: randomInt(500, 35000)
+        balance: randomInt(5000, 75000),
+        occupation: pick(["AGRICULTURE", "RETAIL", "SERVICES", "TRANSPORT", "REMITTANCE", "OTHER"]),
+        linked_bank_count: randomInt(0, 3),
+        nid_verified: Math.random() > 0.3,
+        is_active: true
       });
     }
-    await Customer.insertMany(customers);
-    console.log("✓ Customers successfully seeded!");
+    await User.insertMany(usersData);
+    console.log("✓ 100 Users successfully seeded!");
 
     // ==========================================
-    // 3. GENERATE 1000 TRANSACTIONS (LOGICALLY RELATED)
+    // 2. CREATE MERCHANT & CUSTOMER PROFILES (INTERCONNECTED)
     // ==========================================
-    console.log("Generating 1000 transaction records...");
-    for (let i = 1; i <= 1000; i++) {
+    console.log("Creating Merchant and Customer interconnected profiles...");
+    let mrcCounter = 1;
+    let cusCounter = 1;
+
+    for (const user of usersData) {
+      if (user.user_type === "MERCHANT" || user.user_type === "BOTH") {
+        const mrcId = `MRC-${String(mrcCounter).padStart(5, "0")}`;
+        merchantsData.push({
+          _id: mrcId,
+          user_id: user._id, // Connected
+          merchant_code: mrcId,
+          merchant_name: merchantNames[mrcCounter - 1] || `${user.name} Stall`,
+          business_type: pick(businessTypes),
+          registration_status: pick(["registered", "unregistered", "in_process"]),
+          wallet_age_months: randomInt(3, 48),
+          business_started_year: randomInt(2015, 2025),
+          is_active: true
+        });
+        mrcCounter++;
+      }
+
+      if (user.user_type === "CUSTOMER" || user.user_type === "BOTH") {
+        const cusId = `CUS-${String(cusCounter).padStart(5, "0")}`;
+        customersData.push({
+          _id: cusId,
+          user_id: user._id, // Connected
+          customer_code: cusId,
+          customer_name: user.name
+        });
+        cusCounter++;
+      }
+    }
+    await Merchant.insertMany(merchantsData);
+    await Customer.insertMany(customersData);
+    console.log(`✓ ${mrcCounter - 1} Merchant Profiles & ${cusCounter - 1} Customer Profiles successfully seeded!`);
+
+    // ==========================================
+    // 3. GENERATE 5000 TRANSACTIONS (INTERCONNECTED VIA parent USER IDs)
+    //    Spread over 400 days for year-over-year F1.3 seasonality testing
+    // ==========================================
+    console.log("Generating 5000 interconnected transaction records (400-day window)...");
+    
+    // Group verified Users by types for transaction creation (unverified users cannot do transactions!)
+    const merchantUsers = usersData.filter(u => (u.user_type === "MERCHANT" || u.user_type === "BOTH") && u.verified_status === "verified");
+    const customerUsers = usersData.filter(u => (u.user_type === "CUSTOMER" || u.user_type === "BOTH") && u.verified_status === "verified");
+
+    for (let i = 1; i <= 5000; i++) {
       const transactionId = `TXN-${String(i).padStart(8, "0")}`;
       const type = pick(["QR_PAYMENT", "WALLET_PAYMENT", "REFUND", "CASH_IN", "CASH_OUT", "SUPPLIER_PAYMENT", "BILL_PAYMENT"]);
       
       let amount = 0;
-      let sender_code = "";
-      let sender_name = "";
-      let receiver_code = "";
-      let receiver_name = "";
+      let sender_id = "";
+      let receiver_id = "";
       let payment_channel = "QR";
 
-      const merchant = pick(merchants);
-      const customer = pick(customers);
+      const merchantUser = pick(merchantUsers);
+      const customerUser = pick(customerUsers);
 
       if (type === "QR_PAYMENT" || type === "WALLET_PAYMENT") {
-        // B2C Customer pays Merchant
-        sender_code = customer.customer_code;
-        sender_name = customer.customer_name;
-        receiver_code = merchant.merchant_code;
-        receiver_name = merchant.merchant_name;
+        // Customer pays Merchant
+        sender_id = customerUser._id;
+        receiver_id = merchantUser._id;
         amount = randomInt(50, 4500);
         payment_channel = type === "QR_PAYMENT" ? "QR" : "WALLET";
       } else if (type === "SUPPLIER_PAYMENT") {
-        // B2B Merchant pays corporate Supplier
-        sender_code = merchant.merchant_code;
-        sender_name = merchant.merchant_name;
-        receiver_code = `SPL-${String(randomInt(1, 10)).padStart(3, "0")}`;
-        receiver_name = `${pick(customerLastNames)} Wholesalers Ltd.`;
+        // Merchant pays corporate supplier user
+        sender_id = merchantUser._id;
+        // Wholesaler is generated randomly from the higher end of users
+        const wholesaler = pick(usersData);
+        receiver_id = wholesaler._id;
         amount = randomInt(5000, 75000);
         payment_channel = "BANK_TRANSFER";
       } else if (type === "BILL_PAYMENT") {
-        // B2B Merchant pays utility provider
-        sender_code = merchant.merchant_code;
-        sender_name = merchant.merchant_name;
-        receiver_code = pick(["NEA", "KUKL", "SUBISU", "WORLDLINK", "NTC", "NCELL"]);
-        receiver_name = receiver_code === "NEA" ? "Nepal Electricity Authority" : `${receiver_code} Utilities`;
+        // Merchant pays utility provider corporate account
+        sender_id = merchantUser._id;
+        const provider = pick(usersData);
+        receiver_id = provider._id;
         amount = randomInt(400, 9500);
         payment_channel = "WALLET";
       } else if (type === "CASH_IN") {
-        // Merchant loads wallet balance from linked bank
-        sender_code = `${merchant.merchant_code}-BANK`;
-        sender_name = `${merchant.owner_name} Bank Acct`;
-        receiver_code = merchant.merchant_code;
-        receiver_name = merchant.merchant_name;
+        // Sweep in from external linked bank to merchant user account
+        sender_id = merchantUser._id;
+        receiver_id = merchantUser._id;
         amount = randomInt(2000, 50000);
         payment_channel = "BANK_TRANSFER";
       } else if (type === "CASH_OUT") {
-        // Merchant sweeps wallet balance back to bank account
-        sender_code = merchant.merchant_code;
-        sender_name = merchant.merchant_name;
-        receiver_code = `${merchant.merchant_code}-BANK`;
-        receiver_name = `${merchant.owner_name} Bank Acct`;
+        // Sweep out from merchant user wallet to external
+        sender_id = merchantUser._id;
+        receiver_id = merchantUser._id;
         amount = randomInt(2000, 40000);
         payment_channel = "BANK_TRANSFER";
       } else { // REFUND
-        // Merchant refunds Customer
-        sender_code = merchant.merchant_code;
-        sender_name = merchant.merchant_name;
-        receiver_code = customer.customer_code;
-        receiver_name = customer.customer_name;
+        // Merchant refunds customer
+        sender_id = merchantUser._id;
+        receiver_id = customerUser._id;
         amount = randomInt(50, 1500);
         payment_channel = "WALLET";
       }
 
-      const isSuccess = Math.random() > 0.03; // 97% success rate
+      const isSuccess = Math.random() > 0.03; // 97% success
       const status = type === "REFUND" ? "REFUNDED" : (isSuccess ? "SUCCESS" : "FAILED");
-      const transTime = dateDaysAgo(randomInt(0, 90));
+      const transTime = dateDaysAgo(randomInt(0, 400));
 
-      // Nepalese coordinates bhaktapur/kathmandu bounding box
       const lat = randomFloat(27.65, 27.75, 4);
       const lon = randomFloat(85.25, 85.45, 4);
 
-      transactions.push({
+      transactionsData.push({
         _id: transactionId,
         transaction_code: transactionId,
-        sender_code,
-        sender_name,
-        receiver_code,
-        receiver_name,
+        sender_id,
+        receiver_id,
         amount,
         transaction_type: type,
         status,
         payment_channel,
         transaction_growth_rate: randomFloat(-0.35, 1.25, 2),
-        device_id: `DEV-${merchant.merchant_code}`,
+        device_id: `DEV-${merchantUser._id}`,
         location: {
-          district: merchant.location.district,
+          district: merchantUser.location.district,
           latitude: lat,
           longitude: lon
         },
         transaction_time: transTime,
-        remarks: `${merchant.business_type} ${type.toLowerCase().replace("_", " ")} record`,
+        remarks: `${merchantUser.user_type} ${type.toLowerCase().replace("_", " ")} record`,
         created_at: transTime
       });
     }
-    await Transaction.insertMany(transactions);
-    console.log("✓ 1000 Transactions successfully seeded!");
+    await Transaction.insertMany(transactionsData);
+    console.log(`✓ ${transactionsData.length} Transactions successfully seeded!`);
 
     // ==========================================
-    // 4. GENERATE WALLET ACTIVITIES (WITH LOGICAL RUNNING BALANCE)
+    // 4. GENERATE WALLET ACTIVITIES (LINKED TO CENTRALIZED USER WALLET)
     // ==========================================
-    console.log("Generating merchant wallet ledger histories...");
+    console.log("Generating centralized User wallet ledger histories...");
     let walletActCounter = 1;
-    for (const merchant of merchants) {
-      let balance = randomInt(5000, 25000);
-      const activities = randomInt(8, 15);
+    for (const user of usersData) {
+      if (user.verified_status !== "verified") continue;
+      let balance = user.balance;
+      const activities = randomInt(15, 40);
 
       for (let j = 0; j < activities; j++) {
         const type = pick(["PAYMENT_RECEIVED", "CASH_IN", "CASH_OUT", "SUPPLIER_PAYMENT", "BILL_PAYMENT", "LOAN_REPAYMENT"]);
@@ -277,31 +294,33 @@ async function seed() {
           balance += amount;
         } else {
           balance -= amount;
-          if (balance < 0) balance = randomInt(1000, 5000); // Prevent negative balances
+          if (balance < 0) balance = randomInt(1000, 5000);
         }
 
-        walletActivities.push({
+        walletActivitiesData.push({
           _id: `WAL-${String(walletActCounter).padStart(5, "0")}`,
-          merchant_id: merchant.merchant_code,
+          user_id: user._id, // Linked to User
           activity_type: type,
           amount,
           balance_after_transaction: balance,
-          activity_time: dateDaysAgo(randomInt(0, 90)),
+          activity_time: dateDaysAgo(randomInt(0, 400)),
           created_at: now
         });
         walletActCounter++;
       }
     }
-    await WalletActivity.insertMany(walletActivities);
+    await WalletActivity.insertMany(walletActivitiesData);
     console.log(`✓ ${walletActCounter - 1} Wallet Activities successfully seeded!`);
 
     // ==========================================
-    // 5. GENERATE UTILITY PAYMENTS
+    // 5. GENERATE UTILITY PAYMENTS (CONNECTED TO MERCHANT & CENTRALIZED USER)
     // ==========================================
-    console.log("Generating utility billing timelines...");
+    console.log("Generating utility payment timelines...");
     let utilCounter = 1;
-    for (const merchant of merchants) {
-      const bills = randomInt(3, 6);
+    for (const merchant of merchantsData) {
+      const parentUser = usersData.find(u => u._id === merchant.user_id);
+      if (!parentUser || parentUser.verified_status !== "verified") continue;
+      const bills = randomInt(2, 4);
       for (let j = 0; j < bills; j++) {
         const dueDate = dateDaysAgo(randomInt(5, 90));
         const paymentRoll = Math.random();
@@ -322,18 +341,17 @@ async function seed() {
         } else if (paymentRoll >= 0.90 && paymentRoll < 0.96) {
           paymentStatus = "MISSED";
           daysLate = 30;
-          paidDate = undefined; // No paid date
+          paidDate = undefined;
         } else {
           paymentStatus = "UNPAID";
           daysLate = randomInt(5, 25);
-          paidDate = undefined; // Not paid yet
+          paidDate = undefined;
         }
 
-        utilityPayments.push({
+        utilityPaymentsData.push({
           _id: `UTIL-${String(utilCounter).padStart(5, "0")}`,
-          merchant_id: merchant.merchant_code,
-          sender_id: merchant.merchant_code,
-          sender_name: merchant.merchant_name,
+          merchant_id: merchant._id, // Linked to Merchant profile
+          sender_id: merchant.user_id, // Linked to parent User
           bill_type: pick(["ELECTRICITY", "WATER", "INTERNET", "MOBILE_TOPUP"]),
           bill_amount: randomInt(300, 8500),
           due_date: dueDate,
@@ -345,7 +363,7 @@ async function seed() {
         utilCounter++;
       }
     }
-    await UtilityPayment.insertMany(utilityPayments);
+    await UtilityPayment.insertMany(utilityPaymentsData);
     console.log(`✓ ${utilCounter - 1} Utility Payments successfully seeded!`);
 
     console.log("⭐ Database Seeding completed successfully!");
@@ -357,7 +375,6 @@ async function seed() {
   }
 }
 
-// Global execution timestamp reference matching seed files
 const now = new Date("2026-05-30T00:00:00Z");
 
 seed();

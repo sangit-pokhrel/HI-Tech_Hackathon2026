@@ -5,20 +5,12 @@ export const customerRoutes = new Elysia({ prefix: "/api/customers" })
   .post("/", CustomerController.createCustomer, {
     body: t.Object({
       _id: t.String({ minLength: 1 }),
+      user_id: t.String({ minLength: 1 }),
       customer_code: t.String({ minLength: 1 }),
       customer_name: t.String({ minLength: 1 }),
-      phone_number: t.Optional(t.String()),
-      location: t.Object({
-        province: t.Optional(t.String()),
-        district: t.String({ minLength: 1 }),
-        municipality: t.String({ minLength: 1 }),
-        ward_no: t.Numeric({ minimum: 1 }),
-      }),
-      verified_status: t.Optional(t.String()),
-      balance: t.Optional(t.Numeric({ minimum: 0 })),
     }),
     detail: {
-      summary: "Create a new customer profile",
+      summary: "Create a new customer profile linked to parent User",
       tags: ["Customers"],
     },
   })
@@ -42,21 +34,11 @@ export const customerRoutes = new Elysia({ prefix: "/api/customers" })
       id: t.String(),
     }),
     body: t.Object({
+      user_id: t.Optional(t.String()),
       customer_name: t.Optional(t.String()),
-      phone_number: t.Optional(t.String()),
-      location: t.Optional(
-        t.Object({
-          province: t.Optional(t.String()),
-          district: t.String(),
-          municipality: t.String(),
-          ward_no: t.Numeric(),
-        })
-      ),
-      verified_status: t.Optional(t.String()),
-      balance: t.Optional(t.Numeric()),
     }),
     detail: {
-      summary: "Update customer by ID",
+      summary: "Update customer profile by ID",
       tags: ["Customers"],
     },
   })
