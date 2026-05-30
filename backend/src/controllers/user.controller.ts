@@ -1,4 +1,4 @@
-import { User } from "../db/schema";
+import { User, Merchant, Transaction, UtilityPayment, WalletActivity, LoanApplication, RepaymentRecord, SocialEdge, PsychometricAnswer, MerchantFeature, ModelPrediction, CreditScore } from "../db/schema";
 
 export const createUser = async ({ body, set }: any) => {
   try {
@@ -94,6 +94,25 @@ export const updateUser = async ({ params: { id }, body, set }: any) => {
         success: false,
         message: "User not found",
       };
+    }
+
+    // Cascade wipe all related records if the user's KYC status is changed to unverified
+    if (body.verified_status === "unverified") {
+      await Transaction.deleteMany({ $or: [{ sender_id: id }, { receiver_id: id }] });
+      await UtilityPayment.deleteMany({ sender_id: id });
+      await WalletActivity.deleteMany({ user_id: id });
+
+      const merchant = await Merchant.findOne({ user_id: id });
+      if (merchant) {
+        const merchantId = merchant._id;
+        await LoanApplication.deleteMany({ merchant_id: merchantId });
+        await RepaymentRecord.deleteMany({ merchant_id: merchantId });
+        await SocialEdge.deleteMany({ source_merchant_id: merchantId });
+        await PsychometricAnswer.deleteMany({ merchant_id: merchantId });
+        await MerchantFeature.deleteMany({ merchant_id: merchantId });
+        await ModelPrediction.deleteMany({ merchant_id: merchantId });
+        await CreditScore.deleteMany({ merchant_id: merchantId });
+      }
     }
 
     return {

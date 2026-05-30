@@ -9,6 +9,11 @@ import { utilityRoutes } from "./routes/utility.routes";
 import { walletRoutes } from "./routes/wallet.routes";
 import { userRoutes } from "./routes/user.routes";
 import { scoringRoutes } from "./routes/scoring.routes";
+import { loanRoutes } from "./routes/loan.routes";
+import { socialRoutes } from "./routes/social.routes";
+import { psychometricRoutes } from "./routes/psychometric.routes";
+import { mlRoutes } from "./routes/ml.routes";
+import { creditRoutes } from "./routes/credit.routes";
 
 const port = process.env.PORT || 3000;
 
@@ -82,6 +87,11 @@ const app = new Elysia()
   .use(walletRoutes)
   .use(userRoutes)
   .use(scoringRoutes)
+  .use(loanRoutes)
+  .use(socialRoutes)
+  .use(psychometricRoutes)
+  .use(mlRoutes)
+  .use(creditRoutes)
 
   // Start listening
   .listen(port);
