@@ -4,6 +4,9 @@ import { swagger } from "@elysiajs/swagger";
 import { connectDB } from "./db/db";
 import { merchantRoutes } from "./routes/merchant.routes";
 import { customerRoutes } from "./routes/customer.routes";
+import { transactionRoutes } from "./routes/transaction.routes";
+import { utilityRoutes } from "./routes/utility.routes";
+import { walletRoutes } from "./routes/wallet.routes";
 
 const port = process.env.PORT || 3000;
 
@@ -72,6 +75,9 @@ const app = new Elysia()
   // Mount Application Routes
   .use(merchantRoutes)
   .use(customerRoutes)
+  .use(transactionRoutes)
+  .use(utilityRoutes)
+  .use(walletRoutes)
 
   // Start listening
   .listen(port);

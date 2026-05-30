@@ -1,0 +1,21 @@
+[
+  {
+    "_id": "UTIL-00001",
+    "merchant_id": "MRC-00001",
+    "sender_id": "MRC-00001",
+    "sender_name": "Maya Tea Stall",
+    "bill_type": "ELECTRICITY",
+    "bill_amount": 1800,
+    "due_date": {
+      "$date": "2026-04-15T00:00:00Z"
+    },
+    "paid_date": {
+      "$date": "2026-04-14T00:00:00Z"
+    },
+    "payment_status": "ON_TIME",
+    "days_late": 0,
+    "created_at": {
+      "$date": "2026-05-30T00:00:00Z"
+    }
+  }
+]

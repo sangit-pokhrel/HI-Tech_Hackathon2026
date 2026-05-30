@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "CUS-00001",
+    "customer_code": "CUS-00001",
+    "customer_name": "Anil Sharma",
+    "phone_number": "9810000001",
+    "location": {
+      "province": "Bagmati",
+      "district": "Kathmandu",
+      "municipality": "Kathmandu Metropolitan City",
+      "ward_no": 10
+    },
+    "created_at": {
+      "$date": "2026-05-30T00:00:00Z"
+    },
+    "verified_status": "verified",
+    "balance": 12000
+  }
+]

@@ -35,22 +35,10 @@ const merchantSchema = new Schema<IMerchant>(
       type: String,
       required: true,
       enum: [
-        "TEA_SHOP",
-        "GROCERY",
-        "RESTAURANT",
-        "VEGETABLE_SHOP",
-        "PHARMACY",
-        "MOBILE_REPAIR",
-        "STATIONERY",
-        "CLOTHING_STORE",
-        "BEAUTY_PARLOUR",
-        "MEAT_SHOP",
-        "BAKERY",
-        "DAIRY_SHOP",
-        "CYBER_CAFE",
-        "HARDWARE_STORE",
-        "SNACK_SHOP",
-        "OTHER",
+        "TEA_SHOP", "GROCERY", "RESTAURANT", "VEGETABLE_SHOP", "PHARMACY",
+        "MOBILE_REPAIR", "STATIONERY", "CLOTHING_STORE", "BEAUTY_PARLOUR",
+        "MEAT_SHOP", "BAKERY", "DAIRY_SHOP", "CYBER_CAFE", "HARDWARE_STORE",
+        "SNACK_SHOP", "OTHER",
       ],
     },
     registration_status: {
@@ -95,7 +83,7 @@ export interface ICustomer {
     ward_no: number;
   };
   created_at: Date;
-  verified_status: string; // verified / unverified
+  verified_status: string;
   balance: number;
 }
 
@@ -139,6 +127,13 @@ export interface ITransaction {
   transaction_type: string;
   status: string;
   payment_channel?: string;
+  transaction_growth_rate?: number;
+  device_id?: string;
+  location?: {
+    district?: string;
+    latitude?: number;
+    longitude?: number;
+  };
   transaction_time: Date;
   remarks?: string;
   created_at: Date;
@@ -157,13 +152,8 @@ const transactionSchema = new Schema<ITransaction>(
       type: String,
       required: true,
       enum: [
-        "QR_PAYMENT",
-        "WALLET_PAYMENT",
-        "REFUND",
-        "CASH_IN",
-        "CASH_OUT",
-        "SUPPLIER_PAYMENT",
-        "BILL_PAYMENT",
+        "QR_PAYMENT", "WALLET_PAYMENT", "REFUND", "CASH_IN", "CASH_OUT",
+        "SUPPLIER_PAYMENT", "BILL_PAYMENT",
       ],
     },
     status: {
@@ -176,6 +166,13 @@ const transactionSchema = new Schema<ITransaction>(
       type: String,
       enum: ["QR", "WALLET", "BANK_TRANSFER", "CASH"],
       default: "QR",
+    },
+    transaction_growth_rate: { type: Number, default: 0 },
+    device_id: { type: String },
+    location: {
+      district: { type: String },
+      latitude: { type: Number },
+      longitude: { type: Number },
     },
     transaction_time: { type: Date, default: Date.now },
     remarks: { type: String },
@@ -196,9 +193,9 @@ export const Transaction = mongoose.models.Transaction || model<ITransaction>("T
 // ==========================================
 export interface IUtilityPayment {
   _id: string;
-  merchant_id: string; // Ref to Merchant
-  sender_id: string; // Sender customer/user ID
-  sender_name: string; // Sender name
+  merchant_id: string;
+  sender_id: string;
+  sender_name: string;
   bill_type: string;
   bill_amount: number;
   due_date: Date;
@@ -225,7 +222,7 @@ const utilityPaymentSchema = new Schema<IUtilityPayment>(
     payment_status: {
       type: String,
       required: true,
-      enum: ["ON_TIME", "LATE", "UNPAID", "PAID_EARLY"],
+      enum: ["ON_TIME", "LATE", "MISSED", "UNPAID", "PAID_EARLY"],
       default: "UNPAID",
     },
     days_late: { type: Number, default: 0, min: 0 },
@@ -244,7 +241,7 @@ export const UtilityPayment = mongoose.models.UtilityPayment || model<IUtilityPa
 // ==========================================
 export interface IWalletActivity {
   _id: string;
-  merchant_id: string; // Ref to Merchant
+  merchant_id: string;
   activity_type: string;
   amount: number;
   balance_after_transaction: number;
@@ -260,11 +257,8 @@ const walletActivitySchema = new Schema<IWalletActivity>(
       type: String,
       required: true,
       enum: [
-        "PAYMENT_RECEIVED",
-        "CASH_IN",
-        "CASH_OUT",
-        "SUPPLIER_PAYMENT",
-        "BILL_PAYMENT",
+        "PAYMENT_RECEIVED", "CASH_IN", "CASH_OUT", "SUPPLIER_PAYMENT",
+        "BILL_PAYMENT", "LOAN_REPAYMENT",
       ],
     },
     amount: { type: Number, required: true, min: 0 },

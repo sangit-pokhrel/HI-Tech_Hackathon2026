@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "TXN-00000001",
+    "transaction_code": "TXN-00000001",
+    "sender_code": "CUS-00001",
+    "sender_name": "Anil Sharma",
+    "receiver_code": "MRC-00001",
+    "receiver_name": "Maya Tea Stall",
+    "amount": 450,
+    "transaction_type": "QR_PAYMENT",
+    "status": "SUCCESS",
+    "payment_channel": "QR",
+    "transaction_growth_rate": 0.08,
+    "device_id": "DEV-MRC-00001",
+    "location": {
+      "district": "Bhaktapur",
+      "latitude": 27.6801,
+      "longitude": 85.3862
+    },
+    "transaction_time": {
+      "$date": "2026-05-25T09:30:00Z"
+    },
+    "remarks": "Tea shop QR payment",
+    "created_at": {
+      "$date": "2026-05-25T09:30:00Z"
+    }
+  }
+]

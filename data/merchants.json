@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "MRC-00001",
+    "merchant_code": "MRC-00001",
+    "merchant_name": "Maya Tea Stall",
+    "owner_name": "Maya Shrestha",
+    "phone_number": "9800000001",
+    "business_type": "TEA_SHOP",
+    "registration_status": "unregistered",
+    "location": {
+      "province": "Bagmati",
+      "district": "Bhaktapur",
+      "municipality": "Madhyapur Thimi",
+      "ward_no": 4
+    },
+    "wallet_age_months": 18,
+    "business_started_year": 2021,
+    "is_active": true,
+    "created_at": {
+      "$date": "2026-05-30T00:00:00Z"
+    },
+    "updated_at": {
+      "$date": "2026-05-30T00:00:00Z"
+    }
+  }
+]
