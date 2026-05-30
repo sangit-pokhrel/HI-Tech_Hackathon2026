@@ -1,0 +1,17 @@
+F1_MAX = 200
+F2_MAX = 180
+F3_MAX = 220
+F4_MAX = 200
+F5_MAX = 200
+TOTAL_SCORE_MAX = 1000
+
+LOOKBACK_DAYS = 180
+
+RISK_BANDS = {
+    "PLATINUM": (850, 1000),
+    "GOLD": (720, 849),
+    "SILVER": (580, 719),
+    "BRONZE": (420, 579),
+    "WATCH": (200, 419),
+    "THIN_FILE": (0, 199),
+}
