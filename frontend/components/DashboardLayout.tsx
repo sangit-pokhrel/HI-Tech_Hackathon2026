@@ -21,7 +21,9 @@ import {
   CheckCircle,
   FileText,
   UserCheck,
-  ArrowRight
+  ArrowRight,
+  User,
+  Users
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -99,18 +101,28 @@ export default function DashboardLayout({
   // Navigation Items
   const navigationItems = currentUser?.user_type === "ADMIN"
     ? [
-        { name: "Admin Control", href: "/admin", icon: ShieldCheck },
+        { name: "Analytics", href: "/admin", icon: BarChart3 },
+        { name: "Identity Reviews", href: "/admin/kyc", icon: ShieldCheck },
+        { name: "Loans Underwriting", href: "/admin/loans", icon: Briefcase },
+        { name: "Global Transactions", href: "/admin/transactions", icon: Coins },
+        { name: "User Balances", href: "/admin/users", icon: Users },
+        { name: "Risk Alerts", href: "/admin/risk-alerts", icon: AlertTriangle },
       ]
     : currentUser?.user_type === "CUSTOMER"
     ? [
-        { name: "My Wallet & Bills", href: "/", icon: BarChart3 },
-        { name: "Transactions", href: "/transactions", icon: Coins },
+        { name: "My Wallet", href: "/", icon: Coins },
+        { name: "Credit Score", href: "/credits", icon: ShieldCheck },
+        { name: "Micro-Loans", href: "/loans", icon: Briefcase },
+        { name: "Transactions", href: "/transactions", icon: BarChart3 },
+        { name: "Bill Payments", href: "/bills", icon: FileText },
+        { name: "My Profile", href: "/profile", icon: User },
       ]
     : [
         { name: "Dashboard", href: "/", icon: BarChart3 },
         { name: "Transactions", href: "/transactions", icon: Coins },
         { name: "Credits", href: "/credits", icon: ShieldCheck },
         { name: "Loan", href: "/loans", icon: Briefcase },
+        { name: "My Profile", href: "/profile", icon: User },
       ];
 
   // 1. Fetch Real-time KYC Verification status

@@ -1,9 +1,12 @@
-from fastapi import FastAPI, HTTPException
+import asyncio
+from datetime import datetime
+from typing import Optional
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from src.common.logger import logger
-from src.ingestion.fetch_api_to_csv import fetch_collection, ENDPOINTS
+from src.ingestion.fetch_api_to_csv import fetch_collection, ENDPOINTS, main as run_ingestion
 from src.features.build_features import build_features
 from src.prediction.predict_merchant import predict_merchant, predict_realtime
 
@@ -194,3 +197,88 @@ def predict_live_network_endpoint(merchant_code: str):
         raise he
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error))
+
+
+# ==========================================
+# BATCH PIPELINE — for cron jobs / nightly runs
+# POST /batch/run    → triggers the full ML pipeline in background
+# GET  /batch/status → poll to see if the run is complete
+# ==========================================
+
+_batch_status: dict = {
+    "running": False,
+    "last_run_at": None,
+    "last_run_status": "never",   # "never" | "running" | "success" | "failed"
+    "last_run_message": None,
+    "merchants_scored": 0,
+}
+
+
+def _run_full_pipeline_sync():
+    """Full ML pipeline: fetch data → build features → train model → score all merchants."""
+    from src.training.train_credit_risk_model import main as run_training
+
+    _batch_status["running"] = True
+    _batch_status["last_run_at"] = datetime.utcnow().isoformat() + "Z"
+    _batch_status["last_run_status"] = "running"
+    _batch_status["last_run_message"] = "Pipeline started"
+    _batch_status["merchants_scored"] = 0
+
+    try:
+        logger.info("[BATCH] Step 1/3 — Fetching all collections from backend API...")
+        run_ingestion()
+        logger.info("[BATCH] Step 1/3 complete.")
+
+        logger.info("[BATCH] Step 2/3 — Building feature matrix...")
+        df = build_features()
+        logger.info(f"[BATCH] Step 2/3 complete. {len(df)} merchant rows built.")
+
+        logger.info("[BATCH] Step 3/3 — Re-training credit risk model...")
+        run_training()
+        logger.info("[BATCH] Step 3/3 complete.")
+
+        _batch_status["merchants_scored"] = len(df)
+        _batch_status["last_run_status"] = "success"
+        _batch_status["last_run_message"] = (
+            f"Pipeline completed. {len(df)} merchants scored."
+        )
+        logger.info("[BATCH] Full pipeline finished successfully.")
+
+    except Exception as error:
+        _batch_status["last_run_status"] = "failed"
+        _batch_status["last_run_message"] = str(error)
+        logger.error(f"[BATCH] Pipeline failed: {error}")
+
+    finally:
+        _batch_status["running"] = False
+
+
+@app.post("/batch/run", summary="Trigger full ML pipeline (for cron jobs)")
+def batch_run(background_tasks: BackgroundTasks):
+    """
+    Triggers the full ML pipeline in the background:
+    1. Fetches fresh data from the backend API
+    2. Rebuilds the feature matrix
+    3. Re-trains the credit risk model
+
+    Returns immediately with 200. Poll /batch/status to check progress.
+    Call this from a nightly cron job (e.g. every night at midnight).
+    """
+    if _batch_status["running"]:
+        raise HTTPException(
+            status_code=409,
+            detail="A pipeline run is already in progress. Poll /batch/status.",
+        )
+
+    background_tasks.add_task(_run_full_pipeline_sync)
+    return {
+        "accepted": True,
+        "message": "Full ML pipeline started in background. Poll /batch/status for progress.",
+        "started_at": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+@app.get("/batch/status", summary="Check status of the last batch pipeline run")
+def batch_status():
+    """Returns the current or last-completed batch run status."""
+    return _batch_status

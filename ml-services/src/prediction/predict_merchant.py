@@ -195,9 +195,50 @@ def predict_realtime(features: dict) -> dict:
     monthly_revenue = float(features.get("monthly_revenue_avg", 0) or 0)
 
     if active_days == 0 and monthly_revenue == 0:
-        final_score = 0
         fraud_penalty = int(rule_metrics["fraud_penalty"])
+
+        # ── Psychometric-anchored baseline for zero-history users ──────────────
+        # New users have no transaction signals, but their psychometric answers
+        # carry real information. Use them to derive a non-zero starter score.
+        #   psychometric_avg : 0-1000  (submitted answers, 750 in this example)
+        #   f5_psychometric  : maps to 0-180 in the rule score (max 200)
+        #   baseline_score   : scales psychometric quality to 0-550 range
+        #                      (can't reach GOLD/PLATINUM without transaction history)
+        psychometric_avg = float(features.get("psychometric_avg", 0) or 0)
+        conscientiousness = float(features.get("conscientiousness_score", 0.5) or 0.5)
+        risk_consistency  = float(features.get("risk_decision_consistency_score", 0.5) or 0.5)
+
+        # F5 psychometric sub-score (0-180, same weight as rule engine)
+        f5_psychometric = round((psychometric_avg / 1000) * 180)
+
+        # Behavioural bonus from conscientiousness & consistency (0-40 points)
+        behavioural_bonus = round((conscientiousness + risk_consistency) / 2 * 40)
+
+        # Baseline = F5 + behavioural bonus, scaled to max 550
+        # 750 psychometric → f5=135, bonus≈20 → total≈155 → scaled * (550/220) ≈ 388
+        raw_baseline = f5_psychometric + behavioural_bonus
+        final_score = min(round(raw_baseline * (550 / 220)), 550)
+        final_score = max(final_score, 100)  # floor: never below 100 for someone who answered questions
+
+        # Derive default probability inversely from psychometric quality
+        # 750 psychometric → repayment_prob ≈ 0.60
+        repayment_probability = round(min(psychometric_avg / 1000 * 0.80, 0.80), 4)
+        default_probability   = round(1 - repayment_probability, 4)
+        ml_repayment_score    = round(repayment_probability * 1000)
+
         loan = recommend_loan(features, final_score, fraud_penalty)
+
+        positive = []
+        risks    = ["No digital transaction history yet — score will improve with usage"]
+        if psychometric_avg >= 700:
+            positive.append("Strong psychometric behavioral profile")
+        if conscientiousness >= 0.7:
+            positive.append("High conscientiousness score")
+        if risk_consistency >= 0.7:
+            positive.append("Consistent risk decision-making")
+        if psychometric_avg < 400:
+            risks.append("Low psychometric signal strength")
+
         result = {
             "merchant_id": str(features.get("merchant_id", "REALTIME")),
             "merchant_code": str(features.get("merchant_code", "REALTIME")),
@@ -207,28 +248,30 @@ def predict_realtime(features: dict) -> dict:
                 "f2_cash_flow_elasticity": 0,
                 "f3_smart_digital_footprint": 0,
                 "f4_community_trust_graph": 0,
-                "f5_psychometric": 0,
+                "f5_psychometric": f5_psychometric,
                 "fraud_penalty": fraud_penalty,
-                "rule_based_nagarik_credits_score": 0,
-                "ml_repayment_score": 0,
-                "final_nagarik_credits_score": 0,
+                "rule_based_nagarik_credits_score": final_score,
+                "ml_repayment_score": ml_repayment_score,
+                "final_nagarik_credits_score": final_score,
             },
             "probabilities": {
-                "default_probability": 1.0,
-                "repayment_probability": 0.0,
+                "default_probability": default_probability,
+                "repayment_probability": repayment_probability,
             },
             "loan_recommendation": loan,
             "explanation": {
                 "summary": (
-                    f"Real-time prediction received a Nagarik Credits of 0. "
-                    f"The decision is {loan['decision']} with {loan['repayment_plan']} repayment due to THIN_FILE status."
+                    f"New profile with no transaction history. "
+                    f"Nagarik Credits score of {final_score} is anchored entirely on psychometric behavioral signals "
+                    f"(avg: {round(psychometric_avg)}). Score will improve significantly as digital transactions build up."
                 ),
-                "positive_factors": [],
-                "risk_factors": ["No transaction history detected", "Thin file profile"],
+                "positive_factors": positive,
+                "risk_factors": risks,
             },
             "predicted_at": datetime.now(timezone.utc).isoformat(),
         }
         return result
+
 
     rule_based_score = int(rule_metrics["rule_based_nagarik_credits_score"])
     fraud_penalty = int(rule_metrics["fraud_penalty"])

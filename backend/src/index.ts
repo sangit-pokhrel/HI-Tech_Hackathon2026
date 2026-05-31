@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
@@ -45,11 +46,11 @@ const app = new Elysia()
       path: "/swagger",
     })
   )
-  
+
   // Custom global error handling handler
   .onError(({ code, error, set }) => {
     console.error(`[Error] [${code}]:`, error.message);
-    
+
     if (code === "VALIDATION") {
       set.status = 400;
       return {
@@ -58,7 +59,7 @@ const app = new Elysia()
         errors: error.message,
       };
     }
-    
+
     if (code === "NOT_FOUND") {
       set.status = 404;
       return {

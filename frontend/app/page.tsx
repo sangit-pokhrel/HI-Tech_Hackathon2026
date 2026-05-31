@@ -3,10 +3,10 @@
 import { useSession, signIn } from "next-auth/react";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowRight, 
-  ShieldCheck, 
-  RotateCw, 
+import {
+  ArrowRight,
+  ShieldCheck,
+  RotateCw,
   Sparkles,
   Mail,
   Lock,
@@ -24,7 +24,7 @@ import DashboardLayout from "../components/DashboardLayout";
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  
+
   // Auth Form State
   const [isRegistering, setIsRegistering] = useState(false);
   const [name, setName] = useState("");
@@ -43,7 +43,7 @@ export default function Home() {
   // Apply simulation state
   const [hasNoScore, setHasNoScore] = useState(false);
   const [isApplied, setIsApplied] = useState(false);
-  const [applyStep, setApplyStep] = useState(0); 
+  const [applyStep, setApplyStep] = useState(0);
   const [applyLoading, setApplyLoading] = useState(false);
 
   // Customer Dashboard State
@@ -64,7 +64,7 @@ export default function Home() {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3001/api";
       const token = (session as any).accessToken;
-      
+
       const res = await fetch(`${backendUrl}/users/${currentUser.id}/score`, {
         method: "GET",
         headers: {
@@ -97,7 +97,7 @@ export default function Home() {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3001/api";
       const token = (session as any).accessToken;
-      
+
       // 1. Fetch transactions where sender/receiver is user
       const transRes = await fetch(`${backendUrl}/transactions?limit=50`, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -149,7 +149,7 @@ export default function Home() {
   const handleApplyForScore = async () => {
     setApplyLoading(true);
     setScoreError("");
-    
+
     try {
       setApplyStep(1);
       await new Promise(resolve => setTimeout(resolve, 1200));
@@ -301,7 +301,7 @@ export default function Home() {
           {/* Glassmorphic Portal Card */}
           <div className="relative group rounded-2xl p-[1px] bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-800 shadow-2xl backdrop-blur-xl bg-slate-950/40">
             <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500/20 to-emerald-500/10 opacity-30 group-hover:opacity-100 blur transition duration-700" />
-            
+
             <div className="relative p-8 rounded-2xl bg-slate-950/80">
               <h2 className="text-xl font-bold text-slate-100 mb-6 text-center">
                 {isRegistering ? "Create Nagarik Account" : "Access Trust Dashboard"}
@@ -453,11 +453,11 @@ export default function Home() {
               <div className="mt-6 text-center">
                 <p className="text-xs text-slate-500">
                   {isRegistering ? "Already have an account?" : "Don't have an account?"}{" "}
-                  <button 
+                  <button
                     onClick={() => {
                       setIsRegistering(!isRegistering);
                       setAuthError("");
-                    }} 
+                    }}
                     className="text-blue-400 hover:text-blue-300 font-semibold transition-all cursor-pointer bg-transparent border-none outline-none"
                   >
                     {isRegistering ? "Sign In" : "Sign Up"}
@@ -506,7 +506,7 @@ export default function Home() {
                     Manage your personal capital, review peer transactions, and check your utility bill balances seamlessly.
                   </p>
                 </div>
-                
+
                 <div className="p-4 rounded-xl border border-slate-900 bg-slate-950/80 max-w-sm space-y-2">
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Alternative Credit Calibrations</p>
                   <p className="text-[11px] text-slate-400 leading-normal">
@@ -517,124 +517,136 @@ export default function Home() {
             </div>
 
             {/* 2. PROFILE & WALLET STATISTICS OVERVIEW */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Wallet Card */}
-              <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md relative overflow-hidden group col-span-2">
-                <div className="absolute top-0 right-0 w-[140px] h-[140px] bg-emerald-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Wallet Active Balance</span>
-                  <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold text-xs uppercase">NPR Available</span>
-                </div>
-                <p className="text-4xl font-black text-slate-500 tracking-tight flex items-baseline gap-2">
-                  NPR <span className="text-slate-100 text-5xl font-black">{session?.user ? (session as any).user.balance?.toLocaleString() || "0" : "0"}</span>
-                </p>
-                <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-900/60 text-xs">
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-widest block font-bold">Nagarik User Code</span>
-                    <span className="font-bold text-slate-300 font-mono">{currentUser?.id || "USR-XXXXX"}</span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-widest block font-bold">Registered Phone</span>
-                    <span className="font-bold text-slate-300 font-mono">{currentUser?.phone || "980XXXXXXX"}</span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Utility Bills Quick Stats */}
-              <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-blue-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bills Pipeline</span>
-                  <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400"><FileText className="w-4 h-4" /></span>
+            {/* Credit Score Card */}
+            <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md relative overflow-hidden group col-span-1">
+              <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-indigo-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nagarik Credit Score</span>
+                {hasNoScore ? (
+                  <button onClick={handleApplyForScore} className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold text-xs uppercase hover:bg-emerald-500/20 transition">
+                    Apply for Score
+                  </button>
+                ) : null}
+              </div>
+              {scoreLoading ? (
+                <p className="text-2xl text-slate-500 animate-pulse">Loading...</p>
+              ) : hasNoScore ? (
+                <p className="text-sm text-slate-400">No score available. Click to apply.</p>
+              ) : scoreData ? (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-black text-slate-100">{scoreData.score}</span>
+                  <span className={getBandStyles(scoreData.band).bg.split(' ')[0] + ' text-sm'}>{getBandStyles(scoreData.band).label}</span>
                 </div>
-                <p className="text-3xl font-extrabold text-slate-100 tracking-tight">
-                  {customerBills.length} <span className="text-xs text-slate-500">Payments</span>
-                </p>
-                <div className="mt-4 pt-4 border-t border-slate-900/60 flex items-center justify-between text-xs font-semibold">
-                  <span className="text-slate-400">On Time Payment Rate</span>
-                  <span className="text-emerald-400">100%</span>
+              ) : null}
+            </div>
+            {/* Wallet Card */}
+            <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md relative overflow-hidden group col-span-2">
+              <div className="absolute top-0 right-0 w-[140px] h-[140px] bg-emerald-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Wallet Active Balance</span>
+                <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold text-xs uppercase">NPR Available</span>
+              </div>
+              <p className="text-4xl font-black text-slate-500 tracking-tight flex items-baseline gap-2">
+                NPR <span className="text-slate-100 text-5xl font-black">{session?.user ? (session as any).user.balance?.toLocaleString() || "0" : "0"}</span>
+              </p>
+              <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-900/60 text-xs font-semibold">
+                <div>
+                  <span className="text-[9px] text-slate-500 uppercase tracking-widest block font-bold">Nagarik User Reference</span>
+                  <span className="font-bold text-slate-300 font-mono">{currentUser?.id || "USR-XXXXX"}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-500 uppercase tracking-widest block font-bold">Registered Phone</span>
+                  <span className="font-bold text-slate-300 font-mono">{currentUser?.phone || "980XXXXXXX"}</span>
                 </div>
               </div>
             </div>
 
+            {/* Wallet activity counter */}
+            <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-blue-500/5 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Wallet Logs</span>
+                <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400"><Sparkles className="w-4 h-4" /></span>
+              </div>
+              <p className="text-3xl font-extrabold text-slate-100 tracking-tight">
+                {customerActivities.length} <span className="text-xs text-slate-500">Logs</span>
+              </p>
+              <div className="mt-4 pt-4 border-t border-slate-900/60 flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-400">Account Health Rate</span>
+                <span className="text-emerald-400">Stable</span>
+              </div>
+            </div>
+
             {/* 3. DYNAMIC CONTENT GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-              {/* Left Column: Peer-to-Peer Transactions Ledger */}
-              <div className="p-5 rounded-2xl border border-slate-900 bg-slate-950/20 backdrop-blur-md overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+
+              {/* Left Side: Wallet Activities Ledger */}
+              <div className="p-5 rounded-2xl border border-slate-900 bg-slate-950/20 backdrop-blur-md overflow-hidden lg:col-span-2">
                 <div className="flex items-center justify-between border-b border-slate-900 pb-3 mb-4">
                   <div className="flex items-center gap-2">
                     <Coins className="w-4.5 h-4.5 text-blue-400 animate-pulse" />
-                    <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">My Transaction Ledger</h3>
+                    <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">My Wallet Activity Log</h3>
                   </div>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{customerTrans.length} Records</span>
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{customerActivities.length} logs</span>
                 </div>
 
-                {customerTrans.length === 0 ? (
-                  <div className="py-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                    No transactions recorded on this wallet
+                {customerActivities.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                    No wallet balance activities recorded
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                    {customerTrans.map((tx) => {
-                      const isOutflow = tx.sender_id === currentUser.id;
-                      return (
-                        <div key={tx._id} className="p-3 rounded-xl border border-slate-900 bg-slate-950/40 flex items-center justify-between gap-4 font-semibold text-xs hover:border-slate-800 transition-all font-mono">
-                          <div className="space-y-0.5 min-w-0">
-                            <h4 className="text-xs font-bold text-slate-200 truncate">{tx.transaction_code}</h4>
-                            <p className="text-[9px] text-slate-500 truncate">
-                              {isOutflow ? `To Receiver: ${tx.receiver_id}` : `From Sender: ${tx.sender_id}`}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className={`font-bold text-xs ${isOutflow ? "text-red-400" : "text-emerald-400"}`}>
-                              {isOutflow ? "-" : "+"} NPR {tx.amount?.toLocaleString()}
-                            </span>
-                            <p className="text-[9px] text-slate-500 mt-0.5">{new Date(tx.transaction_time || tx.created_at).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Right Column: Utility Bill Payments Registry */}
-              <div className="p-5 rounded-2xl border border-slate-900 bg-slate-950/20 backdrop-blur-md overflow-hidden">
-                <div className="flex items-center justify-between border-b border-slate-900 pb-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4.5 h-4.5 text-blue-400" />
-                    <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Utility Bills Ledger</h3>
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{customerBills.length} Bills</span>
-                </div>
-
-                {customerBills.length === 0 ? (
-                  <div className="py-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                    No utility bill records found
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                    {customerBills.map((bill) => (
-                      <div key={bill._id} className="p-3 rounded-xl border border-slate-900 bg-slate-950/40 flex items-center justify-between gap-4 font-semibold text-xs hover:border-slate-800 transition-all">
+                    {customerActivities.map((act) => (
+                      <div key={act._id} className="p-3 rounded-xl border border-slate-900 bg-slate-950/40 flex items-center justify-between gap-4 font-semibold text-xs hover:border-slate-800 transition-all font-mono">
                         <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold text-slate-200">{bill.bill_type.replace("_", " ")}</h4>
-                          <p className="text-[9px] text-slate-500 font-mono">Due Date: {new Date(bill.due_date).toLocaleDateString()}</p>
+                          <h4 className="text-xs font-bold text-slate-200 uppercase">{act.activity_type.replace("_", " ")}</h4>
+                          <p className="text-[9px] text-slate-500">Running Balance After: NPR {act.balance_after_transaction?.toLocaleString()}</p>
                         </div>
-                        <div className="text-right space-y-1">
-                          <p className="font-bold text-slate-200">NPR {bill.bill_amount?.toLocaleString()}</p>
-                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border ${
-                            bill.payment_status === "ON_TIME" || bill.payment_status === "PAID_EARLY"
-                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                              : "bg-red-500/10 border-red-500/30 text-red-400"
-                          }`}>
-                            {bill.payment_status}
+                        <div className="text-right">
+                          <span className="font-bold text-xs text-blue-400">
+                            NPR {act.amount?.toLocaleString()}
                           </span>
+                          <p className="text-[9px] text-slate-500 mt-0.5">{new Date(act.activity_time || act.created_at || new Date()).toLocaleDateString()}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+
+              {/* Right Side: Alternative Upgrade Promos */}
+              <div className="p-5 rounded-2xl border border-slate-900 bg-slate-950/20 backdrop-blur-md overflow-hidden lg:col-span-1 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-900 pb-3">
+                  <Sparkles className="w-4.5 h-4.5 text-blue-400 animate-pulse" />
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Nagarik Alternative Loan CTA</h3>
+                </div>
+
+                <p className="text-xs text-slate-400 leading-relaxed bg-slate-900/20 p-4 rounded-xl border border-slate-900">
+                  Ready to expand your local business or micro enterprise? Apply to upgrade your Customer profile to a **Merchant Partner** account to start mapping alternative factor calibrations (F1-F5 risk gauges) and apply for low-interest micro-loans instantly!
+                </p>
+
+                <div className="pt-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Alternative Calibrations Included</span>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-300 font-semibold font-mono">
+                    <span className="p-1 rounded bg-slate-950/40 border border-slate-900">F1 rhythm check</span>
+                    <span className="p-1 rounded bg-slate-950/40 border border-slate-900">F2 elasticity</span>
+                    <span className="p-1 rounded bg-slate-950/40 border border-slate-900">F3 digital footprint</span>
+                    <span className="p-1 rounded bg-slate-950/40 border border-slate-900">F4 social proof</span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => router.push("/credits")}
+                    className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-blue-500/10 active:scale-[0.98] cursor-pointer"
+                  >
+                    Evaluate Nagarik Score
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
@@ -644,8 +656,8 @@ export default function Home() {
 
   // 2. LOGGED-IN: INTEGRATED SESSIONS IN NEW SYSTEM
   return (
-    <DashboardLayout 
-      scoreLoading={scoreLoading} 
+    <DashboardLayout
+      scoreLoading={scoreLoading}
       onRecalculate={fetchScoreData}
       showRecalculate={!hasNoScore && !!scoreData}
     >
@@ -674,7 +686,7 @@ export default function Home() {
         /* SIMULATED APPLY CTA OR AUDITING CHECKLIST */
         <div className="relative group rounded-2xl p-[1px] bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-800 shadow-2xl backdrop-blur-xl bg-slate-950/40 max-w-2xl mx-auto my-6">
           <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500/20 to-emerald-500/10 opacity-35 group-hover:opacity-100 blur transition duration-700" />
-          
+
           <div className="relative p-10 rounded-2xl bg-slate-950/80 text-center">
             {isApplied ? (
               /* Success states */
@@ -746,11 +758,11 @@ export default function Home() {
       ) : (
         /* MAIN DASHBOARD OVERVIEW: Clean gauge and recommendations */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
+
           {/* Score Gauge */}
           <div className="p-8 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md relative overflow-hidden flex flex-col items-center text-center">
             <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-blue-600/5 blur-xl pointer-events-none" />
-            
+
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-8">Nagarik Alternative Credit Score</h2>
 
             {scoreData ? (
@@ -758,13 +770,13 @@ export default function Home() {
                 <div className="relative w-44 h-44 flex items-center justify-center mb-6">
                   {/* Ring background */}
                   <div className="absolute inset-0 rounded-full border-[12px] border-slate-900" />
-                  
+
                   {/* Pulsing ring color */}
-                  <div 
-                    className="absolute inset-0 rounded-full border-[12px] border-transparent border-t-blue-500 border-r-blue-500 animate-pulse" 
-                    style={{ transform: `rotate(${Math.min(360, (scoreData.score / 1000) * 360)}deg)` }} 
+                  <div
+                    className="absolute inset-0 rounded-full border-[12px] border-transparent border-t-blue-500 border-r-blue-500 animate-pulse"
+                    style={{ transform: `rotate(${Math.min(360, (scoreData.score / 1000) * 360)}deg)` }}
                   />
-                  
+
                   <div className="relative z-10 flex flex-col items-center">
                     <span className="text-5xl font-extrabold text-slate-100 tracking-tight">{scoreData.score}</span>
                     <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1.5">out of 1000</span>
@@ -787,7 +799,7 @@ export default function Home() {
 
           {/* AI Strategic Action & Integrity Warnings */}
           <div className="space-y-8">
-            
+
             {/* AI Improvement */}
             <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md">
               <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">

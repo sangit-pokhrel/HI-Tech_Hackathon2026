@@ -32,12 +32,14 @@ export default function TransactionsPage() {
     setLoading(true);
     setError("");
     try {
-      const backendUrl = "/api";
-      const res = await fetch(`${backendUrl}/transactions?merchant_id=${currentUser.id}&limit=100`, {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3001/api";
+      const token = (session as any).accessToken;
+
+      const res = await fetch(`${backendUrl}/transactions?limit=100`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${(session as any).accessToken}`
+          "Authorization": `Bearer ${token}`
         }
       });
 
@@ -45,7 +47,15 @@ export default function TransactionsPage() {
       if (!res.ok) {
         throw new Error(data.message || "Failed to fetch transactions");
       }
-      setTransactions(data.data || []);
+
+      const list = data.data || [];
+      if (currentUser?.user_type === "CUSTOMER") {
+        const filtered = list.filter((t: any) => t.sender_id === currentUser.id || t.receiver_id === currentUser.id);
+        setTransactions(filtered);
+      } else {
+        const filtered = list.filter((t: any) => t.merchant_id === currentUser.id || t.sender_id === currentUser.id || t.receiver_id === currentUser.id);
+        setTransactions(filtered);
+      }
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred while fetching transactions.");
     } finally {
