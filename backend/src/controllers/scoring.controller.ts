@@ -704,6 +704,12 @@ export const getNagarikCreditsScore = async ({ params: { id }, query, set, user:
     }
 
     const merchant = await ensureMerchantProfile(targetUser);
+
+    const forceAssessment = query?.force_assessment === "true";
+    if (forceAssessment) {
+      return getNoScoreAssessment(targetUser, merchant, set);
+    }
+
     const forceRefresh = shouldForceScoreRefresh(query);
     const storedCreditScore = await CreditScore.findOne({
       merchant_id: merchant ? { $in: [merchant._id, id] } : id,

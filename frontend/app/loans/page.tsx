@@ -27,6 +27,8 @@ export default function LoansPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [hasNoScore, setHasNoScore] = useState(false);
+  const [recommendedLoanAmount, setRecommendedLoanAmount] = useState<number | null>(null);
+  const [recommendedRepaymentPlan, setRecommendedRepaymentPlan] = useState<string | null>(null);
 
   // Form states for new application
   const [amount, setAmount] = useState("25000");
@@ -42,6 +44,8 @@ export default function LoansPage() {
     setLoading(true);
     setError("");
     setHasNoScore(false);
+    setRecommendedLoanAmount(null);
+    setRecommendedRepaymentPlan(null);
     try {
       // Fetch all merchants to find the linked profile
       const merchantRes = await fetch("/api/merchants", {
@@ -75,6 +79,11 @@ export default function LoansPage() {
         setHasNoScore(true);
         router.replace("/credits?redirectReason=no-score");
         return;
+      }
+
+      if (scoreRes.ok && scoreData) {
+        setRecommendedLoanAmount(scoreData.suggested_loan_amount || 0);
+        setRecommendedRepaymentPlan(scoreData.repayment_plan || "WEEKLY");
       }
 
       // Now query loan applications with the found merchant _id
@@ -243,6 +252,29 @@ export default function LoansPage() {
               <div className="p-3.5 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 text-xs font-semibold mb-6 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>{formError}</span>
+              </div>
+            )}
+
+            {recommendedLoanAmount !== null && recommendedLoanAmount > 0 && (
+              <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 text-blue-400 text-xs font-semibold mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 leading-relaxed">
+                <div className="flex items-start gap-2.5">
+                  <Sparkles className="w-4.5 h-4.5 flex-shrink-0 mt-0.5 text-blue-400" />
+                  <span>
+                    Based on your active Nagarik Credit score, you are recommended/pre-approved for up to{" "}
+                    <strong className="text-slate-100 font-extrabold text-sm">Rs. {recommendedLoanAmount.toLocaleString("en-NP")}</strong>{" "}
+                    with a <strong className="text-slate-100 font-bold">{recommendedRepaymentPlan}</strong> repayment cycle.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAmount(String(recommendedLoanAmount));
+                    setRepaymentType(recommendedRepaymentPlan || "WEEKLY");
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:text-blue-200 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap active:scale-95 animate-pulse"
+                >
+                  Auto-Fill Details
+                </button>
               </div>
             )}
 

@@ -728,7 +728,7 @@ export default function Home() {
               </p>
 
               <button
-                onClick={handleApplyForScore}
+                onClick={() => router.push("/credits")}
                 className="mt-8 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-8 rounded-lg transition-all shadow-lg shadow-blue-500/15 cursor-pointer active:scale-[0.98]"
               >
                 Continue to Credits

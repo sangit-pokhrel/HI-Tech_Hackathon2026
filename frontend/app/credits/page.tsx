@@ -266,6 +266,46 @@ export default function CreditsPage() {
     fetchScoreData();
   }, [fetchScoreData]);
 
+  // ---- Force recalculation of assessment ----
+  const handleRecalculateAssessment = async () => {
+    if (!session || !currentUser?.id) return;
+    setLoading(true);
+    setError("");
+    setDataProfile(null);
+    setScoreData(null);
+    setStage("idle");
+    setComputedScore(null);
+
+    try {
+      const res = await fetch(`/api/users/${currentUser.id}/score?force_assessment=true`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${(session as any).accessToken}`,
+        },
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error_code === "NO_SCORE_RECORD") {
+          setDataProfile(data.data_profile);
+          const needed = data.data_profile?.questions_needed ?? 7;
+          const dbQs: any[] = data.psychometric_questions ?? [];
+          const pool = dbQs.length >= needed ? dbQs : FALLBACK_QUESTIONS;
+          setQuestions(pool.slice(0, needed));
+          setStage("intro");
+        } else {
+          setError(data.message || "Failed to fetch questions");
+        }
+      } else {
+        setScoreData(data);
+      }
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred while starting recalculation.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ---- Answer a question ----
   const handleSelectOption = (questionId: string, option: string, score: number) => {
     setAnswers((prev) => ({ ...prev, [questionId]: { selected: option, score } }));
@@ -344,7 +384,7 @@ export default function CreditsPage() {
   return (
     <DashboardLayout
       scoreLoading={loading}
-      onRecalculate={() => fetchScoreData({ refresh: true })}
+      onRecalculate={handleRecalculateAssessment}
       showRecalculate={!!scoreData && !computedScore}
     >
       {/* Redirect warning banner */}

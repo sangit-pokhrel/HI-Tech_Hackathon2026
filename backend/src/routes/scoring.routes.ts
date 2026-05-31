@@ -13,6 +13,7 @@ export const scoringRoutes = new Elysia({ prefix: "/api/users" })
     }),
     query: t.Object({
       refresh: t.Optional(t.String()),
+      force_assessment: t.Optional(t.String()),
     }),
     detail: {
       summary: "Get Nagarik Credits score (or data profile if no score exists)",
