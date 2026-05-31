@@ -1,0 +1,36 @@
+{
+  "merchant_id": "MRC-6969",
+  "merchant_code": "MRC-6969",
+  "merchant_user_id": "USR-6969",
+  "scores": {
+    "f1_livelihood_rhythm": 4,
+    "f2_cash_flow_elasticity": 34,
+    "f3_smart_digital_footprint": 30,
+    "f4_community_trust_graph": 94,
+    "f5_psychometric": 110,
+    "fraud_penalty": 170,
+    "rule_based_sajilo_score": 102,
+    "ml_repayment_score": 0,
+    "final_sajilo_score": 61
+  },
+  "probabilities": {
+    "default_probability": 1.0,
+    "repayment_probability": 0.0
+  },
+  "loan_recommendation": {
+    "risk_band": "THIN_FILE",
+    "decision": "REJECTED",
+    "suggested_loan_amount": 0,
+    "repayment_plan": "NONE"
+  },
+  "explanation": {
+    "summary": "Merchant MRC-6969 received a SajiloScore of 61. The decision is REJECTED with NONE repayment.",
+    "positive_factors": [],
+    "risk_factors": [
+      "High refund rate",
+      "Suspicious transaction spike",
+      "Fast cash-out behaviour"
+    ]
+  },
+  "predicted_at": "2026-05-30T09:44:13.025769+00:00"
+}

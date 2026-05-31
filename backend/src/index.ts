@@ -1,7 +1,9 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
+import { jwt } from "@elysiajs/jwt";
 import { connectDB } from "./db/db";
+import { authRoutes } from "./routes/auth.routes";
 import { merchantRoutes } from "./routes/merchant.routes";
 import { customerRoutes } from "./routes/customer.routes";
 import { transactionRoutes } from "./routes/transaction.routes";
@@ -23,12 +25,19 @@ await connectDB();
 const app = new Elysia()
   // Global CORS middleware
   .use(cors())
+  // Global JWT configuration
+  .use(
+    jwt({
+      name: "jwt",
+      secret: process.env.JWT_SECRET || "nagarik_credits_jwt_secret_key_2026",
+    })
+  )
   // Global Swagger documentation page configuration
   .use(
     swagger({
       documentation: {
         info: {
-          title: "Sajilo Score Fast Backend API Documentation",
+          title: "Nagarik Credits Fast Backend API Documentation",
           version: "1.0.0",
           description: "High-performance Elysia.js + MongoDB open CRUD API template for micro-merchants in Nepal",
         },
@@ -68,7 +77,7 @@ const app = new Elysia()
   // Root / Home endpoint
   .get("/", () => ({
     success: true,
-    message: "Sajilo Score Super Fast MongoDB Backend API is running!",
+    message: "Nagarik Credits Super Fast MongoDB Backend API is running!",
     docs: "/swagger",
   }))
 
@@ -80,6 +89,7 @@ const app = new Elysia()
   }))
 
   // Mount Application Routes
+  .use(authRoutes)
   .use(merchantRoutes)
   .use(customerRoutes)
   .use(transactionRoutes)

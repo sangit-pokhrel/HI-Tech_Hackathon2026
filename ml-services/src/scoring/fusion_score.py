@@ -26,5 +26,5 @@ def calculate_rule_score(row: dict) -> dict:
         "f5_psychometric": f5,
         "fraud_penalty": fraud_penalty,
         "fraud_flags": fraud_flags,
-        "rule_based_sajilo_score": final_score,
+        "rule_based_nagarik_credits_score": final_score,
     }

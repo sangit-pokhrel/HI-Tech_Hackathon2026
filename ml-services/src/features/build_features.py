@@ -35,9 +35,16 @@ def get_merchant_id(row: pd.Series) -> str:
     raise ValueError("Merchant row has no usable ID.")
 
 
-def build_social_graph_scores(social_edges: pd.DataFrame) -> dict:
+def build_social_graph_scores(social_edges: pd.DataFrame, credit_scores: pd.DataFrame = None) -> dict:
     if social_edges.empty:
         return {}
+
+    scores_map = {}
+    if credit_scores is not None and not credit_scores.empty:
+        id_col = first_existing_col(credit_scores, ["merchant_id", "merchant_code"])
+        score_col = first_existing_col(credit_scores, ["final_nagarik_credits_score", "score"])
+        if id_col and score_col:
+            scores_map = dict(zip(credit_scores[id_col].astype(str), credit_scores[score_col].astype(float)))
 
     source_col = first_existing_col(social_edges, ["source_merchant_id", "merchant_id"])
     target_col = first_existing_col(social_edges, ["target_entity_id", "target_id"])
@@ -52,7 +59,11 @@ def build_social_graph_scores(social_edges: pd.DataFrame) -> dict:
         source = str(edge[source_col])
         target = str(edge[target_col])
         strength = float(edge.get("trust_strength", 1) or 1)
-        graph.add_edge(source, target, weight=strength)
+        # Dynamic edge weight adjustment: scale by connected counterparties' previous credit scores
+        weight = strength
+        if target in scores_map:
+            weight = strength * (scores_map[target] / 500.0)
+        graph.add_edge(source, target, weight=weight)
 
     if graph.number_of_nodes() == 0:
         return {}
@@ -60,19 +71,29 @@ def build_social_graph_scores(social_edges: pd.DataFrame) -> dict:
     pagerank = nx.pagerank(graph, weight="weight")
 
     result = {}
+    edge_groups = {}
+    if source_col:
+        edge_groups = {str(k): v for k, v in social_edges.groupby(social_edges[source_col].astype(str))}
 
     for node in graph.nodes:
         if not str(node).startswith("MRC"):
             continue
 
-        merchant_edges = social_edges[social_edges[source_col].astype(str) == str(node)]
+        merchant_edges = edge_groups.get(str(node), pd.DataFrame())
         total_edges = len(merchant_edges)
         unique_targets = merchant_edges[target_col].nunique() if total_edges else 0
         diversity = clamp(unique_targets / max(total_edges, 1))
 
-        if type_col and "GUARANTOR" in merchant_edges[type_col].astype(str).values:
+        if not merchant_edges.empty and type_col and "GUARANTOR" in merchant_edges[type_col].astype(str).values:
             guarantors = merchant_edges[merchant_edges[type_col] == "GUARANTOR"]
-            guarantor_health = clamp(guarantors.get("trust_strength", pd.Series([4])).mean() / 10)
+            g_scores = []
+            for _, g in guarantors.iterrows():
+                g_id = str(g[target_col])
+                if g_id in scores_map:
+                    g_scores.append(scores_map[g_id] / 1000.0)
+                else:
+                    g_scores.append(float(g.get("trust_strength", 4) or 4) / 10.0)
+            guarantor_health = clamp(sum(g_scores) / len(g_scores)) if g_scores else 0.4
         else:
             guarantor_health = 0.4
 
@@ -91,7 +112,7 @@ def derive_synthetic_target(row: dict) -> tuple[str, int]:
     Synthetic label for hackathon only.
     Real training should use repayment_records.ml_target_default.
     '''
-    score = row.get("rule_based_sajilo_score", 500)
+    score = row.get("rule_based_nagarik_credits_score", 500)
     fraud_penalty = row.get("fraud_penalty", 0)
     utility_score = row.get("utility_calibration_score", 0.5)
     cashout_speed = row.get("cashout_speed_score", 0.5)
@@ -123,7 +144,45 @@ def build_features() -> pd.DataFrame:
     if merchants.empty:
         raise ValueError("merchants.csv is required. Run fetch_api_to_csv first.")
 
-    graph_scores = build_social_graph_scores(social_edges)
+    # Pre-group dataframes for O(1) loop lookup performance optimization
+    tx_by_receiver = {}
+    tx_by_fallback = {}
+    fallback_col = None
+
+    if not transactions.empty:
+        if "receiver_id" in transactions.columns:
+            tx_by_receiver = {str(k): v for k, v in transactions.groupby(transactions["receiver_id"].astype(str))}
+        else:
+            fallback_col = first_existing_col(transactions, ["receiver_code", "merchant_id", "receiver_id"])
+            if fallback_col:
+                tx_by_fallback = {str(k): v for k, v in transactions.groupby(transactions[fallback_col].astype(str))}
+
+    util_by_merchant = {}
+    if not utility_payments.empty and "merchant_id" in utility_payments.columns:
+        util_by_merchant = {str(k): v for k, v in utility_payments.groupby(utility_payments["merchant_id"].astype(str))}
+
+    wallet_by_user = {}
+    wallet_by_merchant = {}
+    if not wallet_activities.empty:
+        if "user_id" in wallet_activities.columns:
+            wallet_by_user = {str(k): v for k, v in wallet_activities.groupby(wallet_activities["user_id"].astype(str))}
+        elif "merchant_id" in wallet_activities.columns:
+            wallet_by_merchant = {str(k): v for k, v in wallet_activities.groupby(wallet_activities["merchant_id"].astype(str))}
+
+    loans_by_merchant = {}
+    if not loan_applications.empty and "merchant_id" in loan_applications.columns:
+        loans_by_merchant = {str(k): v for k, v in loan_applications.groupby(loan_applications["merchant_id"].astype(str))}
+
+    repayments_by_merchant = {}
+    if not repayment_records.empty and "merchant_id" in repayment_records.columns:
+        repayments_by_merchant = {str(k): v for k, v in repayment_records.groupby(repayment_records["merchant_id"].astype(str))}
+
+    psy_by_merchant = {}
+    if not psychometric_answers.empty and "merchant_id" in psychometric_answers.columns:
+        psy_by_merchant = {str(k): v for k, v in psychometric_answers.groupby(psychometric_answers["merchant_id"].astype(str))}
+
+    credit_scores = safe_read("credit_scores")
+    graph_scores = build_social_graph_scores(social_edges, credit_scores)
     rows = []
 
     for _, merchant in merchants.iterrows():
@@ -132,47 +191,46 @@ def build_features() -> pd.DataFrame:
         merchant_user_id = str(merchant.get("user_id", ""))
         business_type = str(merchant.get("business_type", "OTHER"))
 
-        # New backend schema:
-        # Transaction.sender_id and receiver_id reference User.
-        # For merchant income, receiver_id should match merchant.user_id.
-        if not transactions.empty and "receiver_id" in transactions.columns:
-            merchant_tx = transactions[transactions["receiver_id"].astype(str) == merchant_user_id].copy()
-        else:
-            # fallback for older transaction schemas
-            receiver_col = first_existing_col(transactions, ["receiver_code", "merchant_id", "receiver_id"])
-            if receiver_col:
-                merchant_tx = transactions[transactions[receiver_col].astype(str).isin([merchant_id, merchant_code, merchant_user_id])].copy()
+        # Lookup transaction features
+        if not transactions.empty:
+            if "receiver_id" in transactions.columns:
+                merchant_tx = tx_by_receiver.get(merchant_user_id, pd.DataFrame()).copy()
             else:
-                merchant_tx = pd.DataFrame()
-
-        if not utility_payments.empty and "merchant_id" in utility_payments.columns:
-            merchant_util = utility_payments[utility_payments["merchant_id"].astype(str) == merchant_id].copy()
+                if fallback_col:
+                    parts = []
+                    for key in [merchant_id, merchant_code, merchant_user_id]:
+                        part = tx_by_fallback.get(key)
+                        if part is not None:
+                            parts.append(part)
+                    if parts:
+                        merchant_tx = pd.concat(parts).drop_duplicates().copy()
+                    else:
+                        merchant_tx = pd.DataFrame()
+                else:
+                    merchant_tx = pd.DataFrame()
         else:
-            merchant_util = pd.DataFrame()
+            merchant_tx = pd.DataFrame()
 
-        # New backend schema:
-        # WalletActivity.user_id references centralized User.
-        if not wallet_activities.empty and "user_id" in wallet_activities.columns:
-            merchant_wallet = wallet_activities[wallet_activities["user_id"].astype(str) == merchant_user_id].copy()
-        elif not wallet_activities.empty and "merchant_id" in wallet_activities.columns:
-            merchant_wallet = wallet_activities[wallet_activities["merchant_id"].astype(str) == merchant_id].copy()
+        # Lookup utility features
+        merchant_util = util_by_merchant.get(merchant_id, pd.DataFrame()).copy()
+
+        # Lookup wallet features
+        if not wallet_activities.empty:
+            if "user_id" in wallet_activities.columns:
+                merchant_wallet = wallet_by_user.get(merchant_user_id, pd.DataFrame()).copy()
+            else:
+                merchant_wallet = wallet_by_merchant.get(merchant_id, pd.DataFrame()).copy()
         else:
             merchant_wallet = pd.DataFrame()
 
-        if not loan_applications.empty and "merchant_id" in loan_applications.columns:
-            merchant_loans = loan_applications[loan_applications["merchant_id"].astype(str) == merchant_id].copy()
-        else:
-            merchant_loans = pd.DataFrame()
+        # Lookup loan features
+        merchant_loans = loans_by_merchant.get(merchant_id, pd.DataFrame()).copy()
 
-        if not repayment_records.empty and "merchant_id" in repayment_records.columns:
-            merchant_repayments = repayment_records[repayment_records["merchant_id"].astype(str) == merchant_id].copy()
-        else:
-            merchant_repayments = pd.DataFrame()
+        # Lookup repayment features
+        merchant_repayments = repayments_by_merchant.get(merchant_id, pd.DataFrame()).copy()
 
-        if not psychometric_answers.empty and "merchant_id" in psychometric_answers.columns:
-            merchant_psy = psychometric_answers[psychometric_answers["merchant_id"].astype(str) == merchant_id].copy()
-        else:
-            merchant_psy = pd.DataFrame()
+        # Lookup psychometric features
+        merchant_psy = psy_by_merchant.get(merchant_id, pd.DataFrame()).copy()
 
         # Transaction features
         if not merchant_tx.empty and "transaction_time" in merchant_tx.columns:
@@ -240,7 +298,12 @@ def build_features() -> pd.DataFrame:
             wallet_velocity_score = clamp(min(money_in, money_out) / max(money_in, 1))
 
             cashout_amount = merchant_wallet[merchant_wallet["activity_type"] == "CASH_OUT"]["amount"].sum()
-            cashout_speed_score = clamp(1 - (cashout_amount / max(merchant_wallet["amount"].sum(), 1)))
+            
+            # Corrected cashout speed feature: compare cash withdrawals specifically against cash inflows
+            if money_in == 0:
+                cashout_speed_score = 1.0
+            else:
+                cashout_speed_score = clamp(1 - (cashout_amount / max(money_in, 1)))
         else:
             wallet_velocity_score = 0.4
             cashout_speed_score = 0.6

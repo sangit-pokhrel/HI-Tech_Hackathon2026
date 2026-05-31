@@ -1,4 +1,4 @@
-# Sajilo Score Fast MongoDB Backend Template
+# Nagarik Credits Fast MongoDB Backend Template
 
 A high-performance, developer-friendly backend template powered by **Bun**, featuring **Elysia.js** (the fastest Bun web framework) and **MongoDB** connected via **Mongoose**. 
 
@@ -42,19 +42,17 @@ Here, you can test and explore all the endpoints interactively.
 ## Directory Structure
 ```
 backend/
-├── src/
-│   ├── db/
-│   │   ├── db.ts          # MongoDB client connection wrapper
-│   │   └── schema.ts      # Mongoose Schemas (Merchant, Customer, Transaction, UtilityPayment, WalletActivity)
-│   ├── controllers/
-│   │   ├── merchant.controller.ts  # CRUD logical handlers for Merchants
-│   │   └── customer.controller.ts  # CRUD logical handlers for Customers
-│   ├── routes/
-│   │   ├── merchant.routes.ts      # Merchant endpoint routers
-│   │   └── customer.routes.ts      # Customer endpoint routers
-│   └── index.ts           # Main entry point (middleware, Swagger config)
-├── tsconfig.json          # TypeScript config optimized for Bun
-└── package.json           # Scripts and dependencies
+└── src/
+    ├── db/
+    │   ├── db.ts          # MongoDB client connection wrapper
+    │   └── schema.ts      # Mongoose Schemas (Merchant, Customer, Transaction, UtilityPayment, WalletActivity)
+    ├── controllers/
+    │   ├── merchant.controller.ts  # CRUD logical handlers for Merchants
+    │   └── customer.controller.ts  # CRUD logical handlers for Customers
+    ├── routes/
+    │   ├── merchant.routes.ts      # Merchant endpoint routers
+    │   └── customer.routes.ts      # Customer endpoint routers
+    └── index.ts           # Main entry point (middleware, Swagger config)
 ```
 
 ---

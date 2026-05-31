@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.0.2",
+    "@elysiajs/jwt": "^1.4.2",
     "@elysiajs/swagger": "^1.0.5",
     "elysia": "^1.0.21",
     "mongoose": "^8.4.1"

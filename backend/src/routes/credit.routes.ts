@@ -19,7 +19,7 @@ export const creditRoutes = new Elysia({ prefix: "/api/credit-scores" })
         default_probability: t.Numeric({ minimum: 0, maximum: 1 }),
         repayment_probability: t.Numeric({ minimum: 0, maximum: 1 }),
       }),
-      final_sajilo_score: t.Numeric({ minimum: 0, maximum: 1000 }),
+      final_nagarik_credits_score: t.Numeric({ minimum: 0, maximum: 1000 }),
       risk_band: t.String(),
       decision: t.String(),
       suggested_loan_amount: t.Numeric({ minimum: 0 }),

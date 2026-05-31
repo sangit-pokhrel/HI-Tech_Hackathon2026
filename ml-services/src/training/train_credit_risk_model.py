@@ -128,8 +128,13 @@ def main():
     if not trained_models:
         raise RuntimeError("No model trained successfully.")
 
-    best_model_name = max(all_metrics, key=lambda name: all_metrics[name]["f1_score"])
-    best_model = trained_models[best_model_name]
+    # Select best model based on F1-score with accuracy fallback
+    best_model_name = max(all_metrics, key=lambda name: (all_metrics[name]["f1_score"], all_metrics[name]["accuracy"]))
+    
+    # Retrain the selected best model on the ENTIRE dataset (100% of data)
+    logger.info(f"Retraining the best model ({best_model_name}) on the entire dataset...")
+    best_model = candidate_models[best_model_name]
+    best_model.fit(x, y)
 
     joblib.dump(best_model, MODEL_DIR / "credit_risk_model.pkl")
 

@@ -1,0 +1,36 @@
+{
+  "merchant_id": "MRC-00002",
+  "merchant_code": "MRC-00002",
+  "merchant_user_id": "USR-00002",
+  "scores": {
+    "f1_livelihood_rhythm": 95,
+    "f2_cash_flow_elasticity": 77,
+    "f3_smart_digital_footprint": 121,
+    "f4_community_trust_graph": 112,
+    "f5_psychometric": 118,
+    "fraud_penalty": 0,
+    "rule_based_sajilo_score": 523,
+    "ml_repayment_score": 297,
+    "final_sajilo_score": 433
+  },
+  "probabilities": {
+    "default_probability": 0.7033,
+    "repayment_probability": 0.2967
+  },
+  "loan_recommendation": {
+    "risk_band": "BRONZE",
+    "decision": "REVIEW",
+    "suggested_loan_amount": 17804,
+    "repayment_plan": "WEEKLY"
+  },
+  "explanation": {
+    "summary": "Merchant MRC-00002 received a SajiloScore of 433. The decision is REVIEW with WEEKLY repayment.",
+    "positive_factors": [
+      "Healthy wallet velocity",
+      "Reliable smart digital footprint",
+      "Strong psychometric profile"
+    ],
+    "risk_factors": []
+  },
+  "predicted_at": "2026-05-30T09:22:26.708741+00:00"
+}

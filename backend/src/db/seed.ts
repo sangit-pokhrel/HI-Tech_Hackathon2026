@@ -104,7 +104,7 @@ const now = new Date("2026-05-30T00:00:00Z");
 
 async function seed() {
   try {
-    console.log("🍃 Preparing connection to MongoDB testdb...");
+    console.log("🍃 Preparing connection to MongoDB NagarikCredits...");
     await connectDB();
 
     console.log("🧹 Wiping all 15 old collections completely...");
@@ -151,11 +151,18 @@ async function seed() {
         user_type = "BOTH";
       }
 
+      const email = `user${i}@nagarikcredits.com`;
+      const password = Bun.password.hashSync("password123", {
+        algorithm: "bcrypt",
+        cost: 4
+      });
       usersData.push({
         _id: userId,
         user_code: userId,
         name: i <= 50 ? ownerNames[i - 1] : `${pick(customerFirstNames)} ${pick(customerLastNames)}`,
         phone: generatePhone("980", i),
+        email,
+        password,
         user_type,
         location: {
           province: "Bagmati",
@@ -616,7 +623,7 @@ async function seed() {
     // ==========================================
     // 11. GENERATE ML FEATURES, PREDICTIONS, CREDIT SCORES
     // ==========================================
-    console.log("Populating ML model outputs: features, predictions, SajiloScores...");
+    console.log("Populating ML model outputs: features, predictions, Nagarik Credits Scores...");
     let modelCounter = 1;
     for (const merchant of verifiedMerchants) {
       const merchantAnswers = psychometricAnswersData.filter(ans => ans.merchant_id === merchant._id);
@@ -687,16 +694,16 @@ async function seed() {
       });
 
       // C. Blended CreditScore
-      const sajiloScore = Math.max(100, Math.min(1000, Math.round(
+      const nagarikCreditsScore = Math.max(100, Math.min(1000, Math.round(
         (1 - defaultProb) * 750 + (psychometricAvg / 1000) * 250
       )));
 
       let riskBand = "BRONZE";
       let decision = "APPROVED";
-      if (sajiloScore >= 850) { riskBand = "PLATINUM"; decision = "APPROVED"; }
-      else if (sajiloScore >= 720) { riskBand = "GOLD"; decision = "APPROVED"; }
-      else if (sajiloScore >= 580) { riskBand = "SILVER"; decision = "APPROVED"; }
-      else if (sajiloScore >= 420) { riskBand = "BRONZE"; decision = "MICRO_CREDIT_ONLY"; }
+      if (nagarikCreditsScore >= 850) { riskBand = "PLATINUM"; decision = "APPROVED"; }
+      else if (nagarikCreditsScore >= 720) { riskBand = "GOLD"; decision = "APPROVED"; }
+      else if (nagarikCreditsScore >= 580) { riskBand = "SILVER"; decision = "APPROVED"; }
+      else if (nagarikCreditsScore >= 420) { riskBand = "BRONZE"; decision = "MICRO_CREDIT_ONLY"; }
       else { riskBand = "WATCH"; decision = "REJECTED"; }
 
       const parentUser = usersData.find(u => u._id === merchant.user_id);
@@ -716,17 +723,17 @@ async function seed() {
           fraud_penalty: hasDefaults ? 150 : 0
         },
         ml_scores: {
-          ml_repayment_score: sajiloScore,
+          ml_repayment_score: nagarikCreditsScore,
           default_probability: defaultProb,
           repayment_probability: 1 - defaultProb
         },
-        final_sajilo_score: sajiloScore,
+        final_nagarik_credits_score: nagarikCreditsScore,
         risk_band: accountAgeMonths < 3 ? "THIN_FILE" : riskBand,
         decision,
         suggested_loan_amount: decision === "REJECTED" ? 0 : randomInt(20000, 150000),
         repayment_plan: pick(["DAILY", "WEEKLY", "MONTHLY"]),
         fraud_flags: hasDefaults ? ["LATE_REPAYMENT_SPIKE"] : [],
-        explanation: `Blended Sajilo Bishwas credit index computed at ${sajiloScore} based on alternative metrics.`,
+        explanation: `Blended Nagarik Credits credit index computed at ${nagarikCreditsScore} based on alternative metrics.`,
         calculated_at: now
       });
 
@@ -777,6 +784,1170 @@ async function seed() {
     ];
     await MLTrainingRun.insertMany(trainingRuns);
     console.log("✓ ML Training run logs populated successfully!");
+
+    // ==========================================
+    // 13. SEED A STATIC "PERFECT MERCHANT" (USR-99999 / MRC-99999)
+    // ==========================================
+    console.log("Seeding a perfect merchant profile (USR-99999 / MRC-99999)...");
+    const perfectUserId = "USR-99999";
+    const perfectMrcId = "MRC-99999";
+    const perfectCusId = "CUS-99999";
+
+    await User.create({
+      _id: perfectUserId,
+      user_code: perfectUserId,
+      name: "Siddharth Perfect Merchant",
+      phone: "9809999999",
+      email: "perfect@nagarikcredits.com",
+      password: "password123",
+      user_type: "BOTH",
+      location: {
+        province: "Bagmati",
+        district: "Kathmandu",
+        municipality: "Kathmandu Metropolitan City",
+        ward_no: 1
+      },
+      verified_status: "verified",
+      balance: 150000,
+      is_active: true,
+      created_at: new Date("2024-01-01T00:00:00Z")
+    });
+
+    await Merchant.create({
+      _id: perfectMrcId,
+      user_id: perfectUserId,
+      merchant_code: perfectMrcId,
+      merchant_name: "Siddharth Perfect Grocery",
+      business_type: "GROCERY",
+      registration_status: "registered",
+      wallet_age_months: 28,
+      business_started_year: 2018,
+      is_active: true
+    });
+
+    await Customer.create({
+      _id: perfectCusId,
+      user_id: perfectUserId,
+      customer_code: perfectCusId,
+      customer_name: "Siddharth Perfect Merchant"
+    });
+
+    // Create 180 consistent SUCCESS transactions over the lookback period
+    const perfectTxns: any[] = [];
+    for (let k = 1; k <= 180; k++) {
+      const txId = `TXN-999${String(k).padStart(5, "0")}`;
+      const txTime = new Date();
+      txTime.setDate(txTime.getDate() - k); // 1 transaction per day
+      txTime.setHours(12, 0, 0, 0);
+
+      perfectTxns.push({
+        _id: txId,
+        transaction_code: txId,
+        sender_id: `USR-${String(randomInt(51, 100)).padStart(5, "0")}`, // Received from random customers
+        receiver_id: perfectUserId,
+        amount: randomInt(3000, 8000), // Solid daily revenue
+        transaction_type: "QR_PAYMENT",
+        status: "SUCCESS",
+        payment_channel: "QR",
+        transaction_growth_rate: randomFloat(0.01, 0.05, 2),
+        device_id: `DEV-${perfectUserId}`,
+        location: {
+          district: "Kathmandu",
+          latitude: 27.7007,
+          longitude: 85.3001
+        },
+        transaction_time: txTime,
+        remarks: "Perfect merchant sales income",
+        created_at: txTime
+      });
+    }
+    await Transaction.insertMany(perfectTxns);
+
+    // Create 50 high-balance, healthy wallet activities
+    const perfectWallet: any[] = [];
+    let perfectBal = 150000;
+    for (let k = 1; k <= 50; k++) {
+      perfectBal += randomInt(1000, 5000);
+      perfectWallet.push({
+        _id: `WAL-99${String(k).padStart(3, "0")}`,
+        user_id: perfectUserId,
+        activity_type: "PAYMENT_RECEIVED",
+        amount: randomInt(1000, 5000),
+        balance_after_transaction: perfectBal,
+        activity_time: dateDaysAgo(k * 3),
+        created_at: now
+      });
+    }
+    await WalletActivity.insertMany(perfectWallet);
+
+    // Create 12 utility payments - all early/on-time with 0 days late
+    const perfectUtils: any[] = [];
+    for (let k = 1; k <= 12; k++) {
+      const dueDate = dateDaysAgo(k * 25);
+      const paidDate = new Date(dueDate);
+      paidDate.setDate(paidDate.getDate() - 3); // Paid 3 days early
+
+      perfectUtils.push({
+        _id: `UTIL-99${String(k).padStart(3, "0")}`,
+        merchant_id: perfectMrcId,
+        sender_id: perfectUserId,
+        bill_type: k % 3 === 0 ? "ELECTRICITY" : (k % 3 === 1 ? "INTERNET" : "MOBILE_TOPUP"),
+        bill_amount: randomInt(1200, 3500),
+        due_date: dueDate,
+        paid_date: paidDate,
+        payment_status: "PAID_EARLY",
+        days_late: 0,
+        created_at: now
+      });
+    }
+    await UtilityPayment.insertMany(perfectUtils);
+
+    // Create 1 completed closed loan that was fully paid on time
+    const perfectLoanId = "LON-99999";
+    await LoanApplication.create({
+      _id: perfectLoanId,
+      loan_application_code: perfectLoanId,
+      merchant_id: perfectMrcId,
+      requested_amount: 100000,
+      approved_amount: 100000,
+      loan_purpose: "INVENTORY_PURCHASE",
+      preferred_repayment_type: "WEEKLY",
+      application_status: "CLOSED",
+      applied_at: dateDaysAgo(120),
+      decided_at: dateDaysAgo(115)
+    });
+
+    const perfectRepays: any[] = [];
+    for (let k = 1; k <= 4; k++) {
+      const dueDate = dateDaysAgo(120 - k * 20);
+      const paidDate = new Date(dueDate);
+      paidDate.setDate(paidDate.getDate() - 2); // paid 2 days early
+
+      perfectRepays.push({
+        _id: `RPY-999${k}`,
+        repayment_code: `RPY-999${k}`,
+        loan_application_id: perfectLoanId,
+        merchant_id: perfectMrcId,
+        due_amount: 25000,
+        paid_amount: 25000,
+        due_date: dueDate,
+        paid_date: paidDate,
+        repayment_status: "PAID_ON_TIME",
+        days_late: 0,
+        ml_target_default: 0
+      });
+    }
+    await RepaymentRecord.insertMany(perfectRepays);
+
+    // Create high-trust community trust edges
+    const perfectEdges: any[] = [];
+    for (let k = 1; k <= 4; k++) {
+      perfectEdges.push({
+        _id: `EDG-999${k}`,
+        source_merchant_id: perfectMrcId,
+        target_entity_type: k % 2 === 0 ? "MERCHANT" : "SUPPLIER",
+        target_entity_id: k % 2 === 0 ? `MRC-0000${k}` : `SPL-0000${k}`,
+        relationship_type: k % 2 === 0 ? "BUSINESS_REFERENCE" : "SUPPLIER",
+        trust_strength: 10,
+        transaction_count: 50,
+        total_transaction_value: 150000
+      });
+    }
+    await SocialEdge.insertMany(perfectEdges);
+
+    // Create perfect psychometric test answers
+    const perfectAnswers: any[] = [];
+    let pAnsCounter = 99901;
+    for (const q of psychometricQuestions) {
+      perfectAnswers.push({
+        _id: `ANS-${pAnsCounter}`,
+        merchant_id: perfectMrcId,
+        question_id: q._id,
+        selected_option: q.best_option,
+        raw_score: 100,
+        normalized_score: 1000,
+        response_time_ms: 5000,
+        consistency_flag: true,
+        answered_at: dateDaysAgo(10)
+      });
+      pAnsCounter++;
+    }
+    await PsychometricAnswer.insertMany(perfectAnswers);
+
+    // Seed feature engineering and model prediction records
+    await MerchantFeature.create({
+      _id: "FET-99999",
+      merchant_id: perfectMrcId,
+      features: {
+        monthly_revenue_avg: 150000,
+        active_days_ratio: 0.98,
+        transaction_growth_rate: 0.15,
+        supplier_payment_ratio: 0.85,
+        wallet_velocity_score: 0.90,
+        transaction_gravity_score: 0.95,
+        liquidity_buffer_score: 0.95,
+        remittance_security_score: 0.98,
+        airtime_consistency_score: 0.99,
+        utility_calibration_score: 0.99,
+        micro_obligation_score: 0.99,
+        social_pagerank_score: 0.95,
+        collusion_safety_score: 0.99,
+        guarantor_health_score: 0.95,
+        psychometric_avg: 1000,
+        conscientiousness_score: 1.0,
+        risk_decision_consistency_score: 0.99,
+        customer_diversity_score: 0.95,
+        repeat_customer_ratio: 0.75,
+        refund_rate: 0.00,
+        failed_payment_rate: 0.00,
+        cashout_speed_score: 0.95,
+        loan_to_income_ratio: 0.10,
+        suspicious_spike_score: 0.00,
+        seasonal_pattern_score: 0.45,
+        repayment_consistency_score: 1.0,
+        repayment_plan_daily_fit: 0.90,
+        repayment_plan_weekly_fit: 0.95,
+        repayment_plan_seasonal_fit: 0.35
+      },
+      ml_target: {
+        repayment_outcome: "GOOD",
+        default_probability_label: 0
+      }
+    });
+
+    await ModelPrediction.create({
+      _id: "PRD-99999",
+      merchant_id: perfectMrcId,
+      model_version: "random_forest_v1.0",
+      default_probability: 0.001,
+      repayment_probability: 0.999,
+      predicted_class: "GOOD",
+      confidence: 0.99,
+      top_features: [
+        { feature_name: "repayment_consistency_score", contribution: -0.45 },
+        { feature_name: "monthly_revenue_avg", contribution: 0.25 },
+        { feature_name: "psychometric_avg", contribution: 0.20 }
+      ],
+      predicted_at: now
+    });
+
+    await CreditScore.create({
+      _id: "SCR-99999",
+      merchant_id: perfectMrcId,
+      factor_scores: {
+        f1_livelihood_rhythm: 198,
+        f2_cash_flow_elasticity: 178,
+        f3_smart_digital_footprint: 218,
+        f4_community_trust_graph: 195,
+        f5_psychometric: 200,
+        fraud_penalty: 0
+      },
+      ml_scores: {
+        ml_repayment_score: 990,
+        default_probability: 0.001,
+        repayment_probability: 0.999
+      },
+      final_nagarik_credits_score: 990,
+      risk_band: "PLATINUM",
+      decision: "APPROVED",
+      suggested_loan_amount: 500000,
+      repayment_plan: "WEEKLY",
+      fraud_flags: [],
+      explanation: "Outstanding credit profile with high revenue consistency, on-time utility payments, perfect psychometric results, and active social trust ties.",
+      calculated_at: now
+    });
+
+    console.log("✓ Perfect merchant profile USR-99999 / MRC-99999 seeded!");
+
+    // ==========================================
+    // 14. SEED STATIC "WORST RECORD MERCHANT" (USR-6969 / MRC-6969)
+    // ==========================================
+    console.log("Seeding a worst record merchant profile (USR-6969 / MRC-6969)...");
+    const worstUserId = "USR-6969";
+    const worstMrcId = "MRC-6969";
+    const worstCusId = "CUS-6969";
+
+    await User.create({
+      _id: worstUserId,
+      user_code: worstUserId,
+      name: "Worst Record Merchant",
+      phone: "9806969696",
+      email: "worst@nagarikcredits.com",
+      password: "password123",
+      user_type: "BOTH",
+      location: {
+        province: "Bagmati",
+        district: "Kathmandu",
+        municipality: "Kathmandu Metropolitan City",
+        ward_no: 13
+      },
+      verified_status: "verified",
+      balance: 10,
+      is_active: true,
+      created_at: dateDaysAgo(30) // Brand new thin file
+    });
+
+    await Merchant.create({
+      _id: worstMrcId,
+      user_id: worstUserId,
+      merchant_code: worstMrcId,
+      merchant_name: "Worst Tea Stall",
+      business_type: "TEA_SHOP",
+      registration_status: "unregistered",
+      wallet_age_months: 1,
+      business_started_year: 2025,
+      is_active: true
+    });
+
+    await Customer.create({
+      _id: worstCusId,
+      user_id: worstUserId,
+      customer_code: worstCusId,
+      customer_name: "Worst Record Merchant"
+    });
+
+    // Highly inactive, failed, or refunded transactions
+    const worstTxns: any[] = [];
+    for (let k = 1; k <= 10; k++) {
+      const txId = `TXN-696${String(k).padStart(5, "0")}`;
+      const txTime = dateDaysAgo(k * 5);
+      worstTxns.push({
+        _id: txId,
+        transaction_code: txId,
+        sender_id: `USR-${String(randomInt(51, 100)).padStart(5, "0")}`,
+        receiver_id: worstUserId,
+        amount: randomInt(100, 500),
+        transaction_type: k % 3 === 0 ? "REFUND" : "QR_PAYMENT",
+        status: k % 2 === 0 ? "FAILED" : "SUCCESS",
+        payment_channel: "QR",
+        transaction_growth_rate: -0.85,
+        device_id: `DEV-${worstUserId}`,
+        location: {
+          district: "Kathmandu",
+          latitude: 27.7007,
+          longitude: 85.3001
+        },
+        transaction_time: txTime,
+        remarks: "Terrible record merchant sales",
+        created_at: txTime
+      });
+    }
+    await Transaction.insertMany(worstTxns);
+
+    // Highly volatile wallet activity with almost zero balance
+    const worstWallet: any[] = [];
+    for (let k = 1; k <= 10; k++) {
+      worstWallet.push({
+        _id: `WAL-69${String(k).padStart(3, "0")}`,
+        user_id: worstUserId,
+        activity_type: "CASH_OUT",
+        amount: randomInt(200, 800),
+        balance_after_transaction: randomInt(1, 15),
+        activity_time: dateDaysAgo(k * 3),
+        created_at: now
+      });
+    }
+    await WalletActivity.insertMany(worstWallet);
+
+    // Highly delayed/unpaid utility obligation
+    const worstUtils: any[] = [];
+    for (let k = 1; k <= 3; k++) {
+      const dueDate = dateDaysAgo(k * 25);
+      worstUtils.push({
+        _id: `UTIL-69${String(k).padStart(3, "0")}`,
+        merchant_id: worstMrcId,
+        sender_id: worstUserId,
+        bill_type: "ELECTRICITY",
+        bill_amount: randomInt(3000, 6000),
+        due_date: dueDate,
+        payment_status: "MISSED",
+        days_late: 30,
+        created_at: now
+      });
+    }
+    await UtilityPayment.insertMany(worstUtils);
+
+    // active default loans
+    const worstLoanId = "LON-69699";
+    await LoanApplication.create({
+      _id: worstLoanId,
+      loan_application_code: worstLoanId,
+      merchant_id: worstMrcId,
+      requested_amount: 150000,
+      approved_amount: 150000,
+      loan_purpose: "WORKING_CAPITAL",
+      preferred_repayment_type: "DAILY",
+      application_status: "DISBURSED",
+      applied_at: dateDaysAgo(60),
+      decided_at: dateDaysAgo(55)
+    });
+
+    const worstRepays: any[] = [];
+    for (let k = 1; k <= 3; k++) {
+      const dueDate = dateDaysAgo(60 - k * 15);
+      worstRepays.push({
+        _id: `RPY-696${k}`,
+        repayment_code: `RPY-696${k}`,
+        loan_application_id: worstLoanId,
+        merchant_id: worstMrcId,
+        due_amount: 50000,
+        paid_amount: 0,
+        due_date: dueDate,
+        repayment_status: "DEFAULT",
+        days_late: 45,
+        ml_target_default: 1
+      });
+    }
+    await RepaymentRecord.insertMany(worstRepays);
+
+    // Bad/collusion trust edges
+    await SocialEdge.create({
+      _id: "EDG-69699",
+      source_merchant_id: worstMrcId,
+      target_entity_type: "CUSTOMER",
+      target_entity_id: "USR-00045",
+      relationship_type: "REGULAR_CUSTOMER",
+      trust_strength: 1, // very weak trust
+      transaction_count: 1,
+      total_transaction_value: 10
+    });
+
+    // Poor scenario answer metrics
+    const worstAnswers: any[] = [];
+    let wAnsCounter = 69601;
+    for (const q of psychometricQuestions) {
+      worstAnswers.push({
+        _id: `ANS-${wAnsCounter}`,
+        merchant_id: worstMrcId,
+        question_id: q._id,
+        selected_option: q.best_option === "A" ? "B" : "A", // selected worst option
+        raw_score: 10,
+        normalized_score: 100,
+        response_time_ms: 1000,
+        consistency_flag: false,
+        answered_at: dateDaysAgo(5)
+      });
+      wAnsCounter++;
+    }
+    await PsychometricAnswer.insertMany(worstAnswers);
+
+    // Seed feature engineering and model prediction records for Worst
+    await MerchantFeature.create({
+      _id: "FET-69699",
+      merchant_id: worstMrcId,
+      features: {
+        monthly_revenue_avg: 10,
+        active_days_ratio: 0.01,
+        transaction_growth_rate: -0.85,
+        supplier_payment_ratio: 0.00,
+        wallet_velocity_score: 0.01,
+        transaction_gravity_score: 0.01,
+        liquidity_buffer_score: 0.01,
+        remittance_security_score: 0.00,
+        airtime_consistency_score: 0.01,
+        utility_calibration_score: 0.00,
+        micro_obligation_score: 0.00,
+        social_pagerank_score: 0.01,
+        collusion_safety_score: 0.01,
+        guarantor_health_score: 0.10,
+        psychometric_avg: 100,
+        conscientiousness_score: 0.1,
+        risk_decision_consistency_score: 0.01,
+        customer_diversity_score: 0.01,
+        repeat_customer_ratio: 0.00,
+        refund_rate: 0.30,
+        failed_payment_rate: 0.50,
+        cashout_speed_score: 0.05,
+        loan_to_income_ratio: 5.0,
+        suspicious_spike_score: 0.85,
+        seasonal_pattern_score: 0.45,
+        repayment_consistency_score: 0.0,
+        repayment_plan_daily_fit: 0.10,
+        repayment_plan_weekly_fit: 0.10,
+        repayment_plan_seasonal_fit: 0.10
+      },
+      ml_target: {
+        repayment_outcome: "DEFAULT",
+        default_probability_label: 1
+      }
+    });
+
+    await ModelPrediction.create({
+      _id: "PRD-69699",
+      merchant_id: worstMrcId,
+      model_version: "random_forest_v1.0",
+      default_probability: 0.999,
+      repayment_probability: 0.001,
+      predicted_class: "DEFAULT",
+      confidence: 0.98,
+      top_features: [
+        { feature_name: "repayment_consistency_score", contribution: 0.45 },
+        { feature_name: "monthly_revenue_avg", contribution: -0.25 },
+        { feature_name: "psychometric_avg", contribution: -0.20 }
+      ],
+      predicted_at: now
+    });
+
+    await CreditScore.create({
+      _id: "SCR-69699",
+      merchant_id: worstMrcId,
+      factor_scores: {
+        f1_livelihood_rhythm: 5,
+        f2_cash_flow_elasticity: 5,
+        f3_smart_digital_footprint: 5,
+        f4_community_trust_graph: 5,
+        f5_psychometric: 20,
+        fraud_penalty: 250
+      },
+      ml_scores: {
+        ml_repayment_score: 1,
+        default_probability: 0.999,
+        repayment_probability: 0.001
+      },
+      final_nagarik_credits_score: 10,
+      risk_band: "WATCH",
+      decision: "REJECTED",
+      suggested_loan_amount: 0,
+      repayment_plan: "NONE",
+      fraud_flags: ["HIGH_REFUND_RATE", "LATE_REPAYMENT_SPIKE", "COMMUNITY_COLLUSION"],
+      explanation: "Terrible credit profile with severe payment defaults, poor transaction rhythm, utility delinquency, and high fraud markers.",
+      calculated_at: now
+    });
+    console.log("✓ Worst merchant profile USR-6969 / MRC-6969 seeded!");
+
+    // ==========================================
+    // 15. SEED STATIC "BEST RECORD MERCHANT" (USR-5555 / MRC-5555)
+    // ==========================================
+    console.log("Seeding a best record merchant profile (USR-5555 / MRC-5555)...");
+    const bestUserId = "USR-5555";
+    const bestMrcId = "MRC-5555";
+    const bestCusId = "CUS-5555";
+
+    await User.create({
+      _id: bestUserId,
+      user_code: bestUserId,
+      name: "Best Record Merchant",
+      phone: "9805555555",
+      email: "best@nagarikcredits.com",
+      password: "password123",
+      user_type: "BOTH",
+      location: {
+        province: "Bagmati",
+        district: "Kathmandu",
+        municipality: "Kathmandu Metropolitan City",
+        ward_no: 1
+      },
+      verified_status: "verified",
+      balance: 200000,
+      is_active: true,
+      created_at: new Date("2023-01-01T00:00:00Z")
+    });
+
+    await Merchant.create({
+      _id: bestMrcId,
+      user_id: bestUserId,
+      merchant_code: bestMrcId,
+      merchant_name: "Best Super Grocery",
+      business_type: "GROCERY",
+      registration_status: "registered",
+      wallet_age_months: 36,
+      business_started_year: 2017,
+      is_active: true
+    });
+
+    await Customer.create({
+      _id: bestCusId,
+      user_id: bestUserId,
+      customer_code: bestCusId,
+      customer_name: "Best Record Merchant"
+    });
+
+    // Create 300 highly consistent SUCCESS transactions over the lookback period
+    const bestTxns: any[] = [];
+    for (let k = 1; k <= 300; k++) {
+      const txId = `TXN-555${String(k).padStart(5, "0")}`;
+      const txTime = new Date();
+      txTime.setDate(txTime.getDate() - k);
+      txTime.setHours(12, 0, 0, 0);
+
+      bestTxns.push({
+        _id: txId,
+        transaction_code: txId,
+        sender_id: `USR-${String(randomInt(51, 100)).padStart(5, "0")}`,
+        receiver_id: bestUserId,
+        amount: randomInt(8000, 15000), // Very solid daily revenue
+        transaction_type: "QR_PAYMENT",
+        status: "SUCCESS",
+        payment_channel: "QR",
+        transaction_growth_rate: randomFloat(0.02, 0.08, 2),
+        device_id: `DEV-${bestUserId}`,
+        location: {
+          district: "Kathmandu",
+          latitude: 27.7007,
+          longitude: 85.3001
+        },
+        transaction_time: txTime,
+        remarks: "Best merchant sales income",
+        created_at: txTime
+      });
+    }
+    await Transaction.insertMany(bestTxns);
+
+    // Create 80 high-balance wallet activities
+    const bestWallet: any[] = [];
+    let bestBal = 200000;
+    for (let k = 1; k <= 80; k++) {
+      bestBal += randomInt(2000, 6000);
+      bestWallet.push({
+        _id: `WAL-55${String(k).padStart(3, "0")}`,
+        user_id: bestUserId,
+        activity_type: "PAYMENT_RECEIVED",
+        amount: randomInt(2000, 6000),
+        balance_after_transaction: bestBal,
+        activity_time: dateDaysAgo(k * 2),
+        created_at: now
+      });
+    }
+    await WalletActivity.insertMany(bestWallet);
+
+    // Create 12 utility payments paid early with 0 days late
+    const bestUtils: any[] = [];
+    for (let k = 1; k <= 12; k++) {
+      const dueDate = dateDaysAgo(k * 25);
+      const paidDate = new Date(dueDate);
+      paidDate.setDate(paidDate.getDate() - 4); // Paid 4 days early
+
+      bestUtils.push({
+        _id: `UTIL-55${String(k).padStart(3, "0")}`,
+        merchant_id: bestMrcId,
+        sender_id: bestUserId,
+        bill_type: "ELECTRICITY",
+        bill_amount: randomInt(2000, 4500),
+        due_date: dueDate,
+        paid_date: paidDate,
+        payment_status: "PAID_EARLY",
+        days_late: 0,
+        created_at: now
+      });
+    }
+    await UtilityPayment.insertMany(bestUtils);
+
+    // Create 2 completed loans paid on time
+    const bestLoanId = "LON-55555";
+    await LoanApplication.create({
+      _id: bestLoanId,
+      loan_application_code: bestLoanId,
+      merchant_id: bestMrcId,
+      requested_amount: 250000,
+      approved_amount: 250000,
+      loan_purpose: "INVENTORY_PURCHASE",
+      preferred_repayment_type: "MONTHLY",
+      application_status: "CLOSED",
+      applied_at: dateDaysAgo(180),
+      decided_at: dateDaysAgo(175)
+    });
+
+    const bestRepays: any[] = [];
+    for (let k = 1; k <= 5; k++) {
+      const dueDate = dateDaysAgo(180 - k * 30);
+      const paidDate = new Date(dueDate);
+      paidDate.setDate(paidDate.getDate() - 3);
+
+      bestRepays.push({
+        _id: `RPY-555${k}`,
+        repayment_code: `RPY-555${k}`,
+        loan_application_id: bestLoanId,
+        merchant_id: bestMrcId,
+        due_amount: 50000,
+        paid_amount: 50000,
+        due_date: dueDate,
+        paid_date: paidDate,
+        repayment_status: "PAID_ON_TIME",
+        days_late: 0,
+        ml_target_default: 0
+      });
+    }
+    await RepaymentRecord.insertMany(bestRepays);
+
+    // Create high-trust edges
+    const bestEdges: any[] = [];
+    for (let k = 1; k <= 5; k++) {
+      bestEdges.push({
+        _id: `EDG-555${k}`,
+        source_merchant_id: bestMrcId,
+        target_entity_type: "SUPPLIER",
+        target_entity_id: `SPL-0000${k}`,
+        relationship_type: "SUPPLIER",
+        trust_strength: 10,
+        transaction_count: 80,
+        total_transaction_value: 300000
+      });
+    }
+    await SocialEdge.insertMany(bestEdges);
+
+    // Create perfect psychometric test answers
+    const bestAnswers: any[] = [];
+    let bAnsCounter = 55501;
+    for (const q of psychometricQuestions) {
+      bestAnswers.push({
+        _id: `ANS-${bAnsCounter}`,
+        merchant_id: bestMrcId,
+        question_id: q._id,
+        selected_option: q.best_option,
+        raw_score: 100,
+        normalized_score: 1000,
+        response_time_ms: 6000,
+        consistency_flag: true,
+        answered_at: dateDaysAgo(10)
+      });
+      bAnsCounter++;
+    }
+    await PsychometricAnswer.insertMany(bestAnswers);
+
+    // Seed feature engineering and model prediction records
+    await MerchantFeature.create({
+      _id: "FET-55555",
+      merchant_id: bestMrcId,
+      features: {
+        monthly_revenue_avg: 200000,
+        active_days_ratio: 0.99,
+        transaction_growth_rate: 0.18,
+        supplier_payment_ratio: 0.90,
+        wallet_velocity_score: 0.95,
+        transaction_gravity_score: 0.98,
+        liquidity_buffer_score: 0.98,
+        remittance_security_score: 0.99,
+        airtime_consistency_score: 0.99,
+        utility_calibration_score: 0.99,
+        micro_obligation_score: 0.99,
+        social_pagerank_score: 0.98,
+        collusion_safety_score: 0.99,
+        guarantor_health_score: 0.98,
+        psychometric_avg: 1000,
+        conscientiousness_score: 1.0,
+        risk_decision_consistency_score: 0.99,
+        customer_diversity_score: 0.98,
+        repeat_customer_ratio: 0.80,
+        refund_rate: 0.00,
+        failed_payment_rate: 0.00,
+        cashout_speed_score: 0.98,
+        loan_to_income_ratio: 0.05,
+        suspicious_spike_score: 0.00,
+        seasonal_pattern_score: 0.45,
+        repayment_consistency_score: 1.0,
+        repayment_plan_daily_fit: 0.95,
+        repayment_plan_weekly_fit: 0.98,
+        repayment_plan_seasonal_fit: 0.35
+      },
+      ml_target: {
+        repayment_outcome: "GOOD",
+        default_probability_label: 0
+      }
+    });
+
+    await ModelPrediction.create({
+      _id: "PRD-55555",
+      merchant_id: bestMrcId,
+      model_version: "random_forest_v1.0",
+      default_probability: 0.0001,
+      repayment_probability: 0.9999,
+      predicted_class: "GOOD",
+      confidence: 0.99,
+      top_features: [
+        { feature_name: "repayment_consistency_score", contribution: -0.48 },
+        { feature_name: "monthly_revenue_avg", contribution: 0.28 },
+        { feature_name: "psychometric_avg", contribution: 0.22 }
+      ],
+      predicted_at: now
+    });
+
+    await CreditScore.create({
+      _id: "SCR-55555",
+      merchant_id: bestMrcId,
+      factor_scores: {
+        f1_livelihood_rhythm: 200,
+        f2_cash_flow_elasticity: 180,
+        f3_smart_digital_footprint: 220,
+        f4_community_trust_graph: 200,
+        f5_psychometric: 200,
+        fraud_penalty: 0
+      },
+      ml_scores: {
+        ml_repayment_score: 995,
+        default_probability: 0.0001,
+        repayment_probability: 0.9999
+      },
+      final_nagarik_credits_score: 995,
+      risk_band: "PLATINUM",
+      decision: "APPROVED",
+      suggested_loan_amount: 500000,
+      repayment_plan: "WEEKLY",
+      fraud_flags: [],
+      explanation: "Best credit profile in the system with maximum transactional scoring, active credit repayments, perfect psychometric indicators, and verified B2B relationships.",
+      calculated_at: now
+    });
+    console.log("✓ Best merchant profile USR-5555 / MRC-5555 seeded!");
+
+    // ==========================================
+    // 16. SEED A DYNAMIC "NEW WORST MERCHANT" (USR-6666 / MRC-6666) TO TEST LIVE
+    // ==========================================
+    console.log("Seeding a worse new merchant profile (USR-6666 / MRC-6666)...");
+    const badUserId = "USR-6666";
+    const badMrcId = "MRC-6666";
+    const badCusId = "CUS-6666";
+
+    await User.create({
+      _id: badUserId,
+      user_code: badUserId,
+      name: "Bad New Merchant",
+      phone: "9806666666",
+      email: "bad@nagarikcredits.com",
+      password: "password123",
+      user_type: "BOTH",
+      location: {
+        province: "Bagmati",
+        district: "Kathmandu",
+        municipality: "Kathmandu Metropolitan City",
+        ward_no: 6
+      },
+      verified_status: "verified",
+      balance: 5,
+      is_active: true,
+      created_at: dateDaysAgo(35) // thin file
+    });
+
+    await Merchant.create({
+      _id: badMrcId,
+      user_id: badUserId,
+      merchant_code: badMrcId,
+      merchant_name: "Bad New Tea Stall",
+      business_type: "TEA_SHOP",
+      registration_status: "unregistered",
+      wallet_age_months: 1,
+      business_started_year: 2025,
+      is_active: true
+    });
+
+    await Customer.create({
+      _id: badCusId,
+      user_id: badUserId,
+      customer_code: badCusId,
+      customer_name: "Bad New Merchant"
+    });
+
+    // Inactive and volatile transaction history
+    const badTxns: any[] = [];
+    for (let k = 1; k <= 8; k++) {
+      const txId = `TXN-666${String(k).padStart(5, "0")}`;
+      const txTime = dateDaysAgo(k * 4);
+      badTxns.push({
+        _id: txId,
+        transaction_code: txId,
+        sender_id: `USR-${String(randomInt(51, 100)).padStart(5, "0")}`,
+        receiver_id: badUserId,
+        amount: randomInt(50, 200),
+        transaction_type: k % 2 === 0 ? "REFUND" : "QR_PAYMENT",
+        status: k % 3 === 0 ? "FAILED" : "SUCCESS",
+        payment_channel: "QR",
+        transaction_growth_rate: -0.92,
+        device_id: `DEV-${badUserId}`,
+        location: {
+          district: "Kathmandu",
+          latitude: 27.7007,
+          longitude: 85.3001
+        },
+        transaction_time: txTime,
+        remarks: "Terrible new merchant sales",
+        created_at: txTime
+      });
+    }
+    await Transaction.insertMany(badTxns);
+
+    // Wallet activity showing zero balance
+    const badWallet: any[] = [];
+    for (let k = 1; k <= 6; k++) {
+      badWallet.push({
+        _id: `WAL-66${String(k).padStart(3, "0")}`,
+        user_id: badUserId,
+        activity_type: "CASH_OUT",
+        amount: randomInt(100, 300),
+        balance_after_transaction: randomInt(1, 10),
+        activity_time: dateDaysAgo(k * 3),
+        created_at: now
+      });
+    }
+    await WalletActivity.insertMany(badWallet);
+
+    // Delayed and unpaid utilities
+    const badUtils: any[] = [];
+    for (let k = 1; k <= 2; k++) {
+      const dueDate = dateDaysAgo(k * 25);
+      badUtils.push({
+        _id: `UTIL-66${String(k).padStart(3, "0")}`,
+        merchant_id: badMrcId,
+        sender_id: badUserId,
+        bill_type: "ELECTRICITY",
+        bill_amount: randomInt(4000, 7000),
+        due_date: dueDate,
+        payment_status: "MISSED",
+        days_late: 30,
+        created_at: now
+      });
+    }
+    await UtilityPayment.insertMany(badUtils);
+
+    // Active default loans
+    const badLoanId = "LON-66669";
+    await LoanApplication.create({
+      _id: badLoanId,
+      loan_application_code: badLoanId,
+      merchant_id: badMrcId,
+      requested_amount: 100000,
+      approved_amount: 100000,
+      loan_purpose: "WORKING_CAPITAL",
+      preferred_repayment_type: "DAILY",
+      application_status: "DISBURSED",
+      applied_at: dateDaysAgo(50),
+      decided_at: dateDaysAgo(45)
+    });
+
+    const badRepays: any[] = [];
+    for (let k = 1; k <= 2; k++) {
+      const dueDate = dateDaysAgo(50 - k * 15);
+      badRepays.push({
+        _id: `RPY-666${k}`,
+        repayment_code: `RPY-666${k}`,
+        loan_application_id: badLoanId,
+        merchant_id: badMrcId,
+        due_amount: 50000,
+        paid_amount: 0,
+        due_date: dueDate,
+        repayment_status: "DEFAULT",
+        days_late: 45,
+        ml_target_default: 1
+      });
+    }
+    await RepaymentRecord.insertMany(badRepays);
+
+    // Low trust social edges - link bad new merchant to worst merchant MRC-6969
+    await SocialEdge.create({
+      _id: "EDG-66669",
+      source_merchant_id: badMrcId,
+      target_entity_type: "MERCHANT",
+      target_entity_id: "MRC-6969", // Connects to another bad user
+      relationship_type: "BUSINESS_REFERENCE",
+      trust_strength: 1, // weak
+      transaction_count: 1,
+      total_transaction_value: 20
+    });
+
+    // Poor psychometrics
+    const badAnswers: any[] = [];
+    let bAnsC = 66601;
+    for (const q of psychometricQuestions) {
+      badAnswers.push({
+        _id: `ANS-${bAnsC}`,
+        merchant_id: badMrcId,
+        question_id: q._id,
+        selected_option: q.best_option === "A" ? "B" : "A", // bad option
+        raw_score: 10,
+        normalized_score: 100,
+        response_time_ms: 1200,
+        consistency_flag: false,
+        answered_at: dateDaysAgo(8)
+      });
+      bAnsC++;
+    }
+    await PsychometricAnswer.insertMany(badAnswers);
+
+    console.log("✓ Dynamic Worse merchant USR-6666 / MRC-6666 seeded successfully!");
+
+    // ==========================================
+    // 17. SEED A DYNAMIC "NEW BEST MERCHANT" (USR-7777 / MRC-7777) TO TEST LIVE
+    // ==========================================
+    console.log("Seeding a best new merchant profile (USR-7777 / MRC-7777)...");
+    const goodUserId = "USR-7777";
+    const goodMrcId = "MRC-7777";
+    const goodCusId = "CUS-7777";
+
+    await User.create({
+      _id: goodUserId,
+      user_code: goodUserId,
+      name: "Best New Merchant",
+      phone: "9807777777",
+      email: "good@nagarikcredits.com",
+      password: "password123",
+      user_type: "BOTH",
+      location: {
+        province: "Bagmati",
+        district: "Kathmandu",
+        municipality: "Kathmandu Metropolitan City",
+        ward_no: 7
+      },
+      verified_status: "verified",
+      balance: 350000,
+      is_active: true,
+      created_at: new Date("2023-05-01T00:00:00Z")
+    });
+
+    await Merchant.create({
+      _id: goodMrcId,
+      user_id: goodUserId,
+      merchant_code: goodMrcId,
+      merchant_name: "Best New Grocery Store",
+      business_type: "GROCERY",
+      registration_status: "registered",
+      wallet_age_months: 36,
+      business_started_year: 2017,
+      is_active: true
+    });
+
+    await Customer.create({
+      _id: goodCusId,
+      user_id: goodUserId,
+      customer_code: goodCusId,
+      customer_name: "Best New Merchant"
+    });
+
+    // Create 100 highly consistent success transactions
+    const goodTxns: any[] = [];
+    for (let k = 1; k <= 100; k++) {
+      const txId = `TXN-777${String(k).padStart(5, "0")}`;
+      const txTime = new Date();
+      txTime.setDate(txTime.getDate() - k * 2);
+      txTime.setHours(12, 0, 0, 0);
+
+      goodTxns.push({
+        _id: txId,
+        transaction_code: txId,
+        sender_id: `USR-${String(randomInt(51, 100)).padStart(5, "0")}`,
+        receiver_id: goodUserId,
+        amount: randomInt(8000, 20000), // Solid daily revenue
+        transaction_type: "QR_PAYMENT",
+        status: "SUCCESS",
+        payment_channel: "QR",
+        transaction_growth_rate: randomFloat(0.03, 0.10, 2),
+        device_id: `DEV-${goodUserId}`,
+        location: {
+          district: "Kathmandu",
+          latitude: 27.7007,
+          longitude: 85.3001
+        },
+        transaction_time: txTime,
+        remarks: "Excellent new merchant sales",
+        created_at: txTime
+      });
+    }
+    await Transaction.insertMany(goodTxns);
+
+    // Wallet activity showing healthy growth and high balance
+    const goodWallet: any[] = [];
+    let goodBal = 350000;
+    for (let k = 1; k <= 40; k++) {
+      goodBal += randomInt(3000, 8000);
+      goodWallet.push({
+        _id: `WAL-77${String(k).padStart(3, "0")}`,
+        user_id: goodUserId,
+        activity_type: "PAYMENT_RECEIVED",
+        amount: randomInt(3000, 8000),
+        balance_after_transaction: goodBal,
+        activity_time: dateDaysAgo(k * 3),
+        created_at: now
+      });
+    }
+    await WalletActivity.insertMany(goodWallet);
+
+    // Early utility payments
+    const goodUtils: any[] = [];
+    for (let k = 1; k <= 8; k++) {
+      const dueDate = dateDaysAgo(k * 25);
+      const paidDate = new Date(dueDate);
+      paidDate.setDate(paidDate.getDate() - 5); // 5 days early
+
+      goodUtils.push({
+        _id: `UTIL-77${String(k).padStart(3, "0")}`,
+        merchant_id: goodMrcId,
+        sender_id: goodUserId,
+        bill_type: "ELECTRICITY",
+        bill_amount: randomInt(3000, 5000),
+        due_date: dueDate,
+        paid_date: paidDate,
+        payment_status: "PAID_EARLY",
+        days_late: 0,
+        created_at: now
+      });
+    }
+    await UtilityPayment.insertMany(goodUtils);
+
+    // Completed loans paid on time
+    const goodLoanId = "LON-77779";
+    await LoanApplication.create({
+      _id: goodLoanId,
+      loan_application_code: goodLoanId,
+      merchant_id: goodMrcId,
+      requested_amount: 300000,
+      approved_amount: 300000,
+      loan_purpose: "INVENTORY_PURCHASE",
+      preferred_repayment_type: "MONTHLY",
+      application_status: "CLOSED",
+      applied_at: dateDaysAgo(150),
+      decided_at: dateDaysAgo(145)
+    });
+
+    const goodRepays: any[] = [];
+    for (let k = 1; k <= 6; k++) {
+      const dueDate = dateDaysAgo(150 - k * 20);
+      const paidDate = new Date(dueDate);
+      paidDate.setDate(paidDate.getDate() - 3);
+
+      goodRepays.push({
+        _id: `RPY-777${k}`,
+        repayment_code: `RPY-777${k}`,
+        loan_application_id: goodLoanId,
+        merchant_id: goodMrcId,
+        due_amount: 50000,
+        paid_amount: 50000,
+        due_date: dueDate,
+        paid_date: paidDate,
+        repayment_status: "PAID_ON_TIME",
+        days_late: 0,
+        ml_target_default: 0
+      });
+    }
+    await RepaymentRecord.insertMany(goodRepays);
+
+    // High trust edges - link best new merchant to perfect merchant MRC-5555
+    await SocialEdge.create({
+      _id: "EDG-77779",
+      source_merchant_id: goodMrcId,
+      target_entity_type: "MERCHANT",
+      target_entity_id: "MRC-5555", // High-score counterparty link
+      relationship_type: "GUARANTOR",
+      trust_strength: 10,
+      transaction_count: 90,
+      total_transaction_value: 400000
+    });
+
+    // Perfect psychometrics
+    const goodAnswers: any[] = [];
+    let gAnsC = 77701;
+    for (const q of psychometricQuestions) {
+      goodAnswers.push({
+        _id: `ANS-${gAnsC}`,
+        merchant_id: goodMrcId,
+        question_id: q._id,
+        selected_option: q.best_option, // perfect option
+        raw_score: 100,
+        normalized_score: 1000,
+        response_time_ms: 5500,
+        consistency_flag: true,
+        answered_at: dateDaysAgo(10)
+      });
+      gAnsC++;
+    }
+    await PsychometricAnswer.insertMany(goodAnswers);
+
+    console.log("✓ Dynamic Best merchant USR-7777 / MRC-7777 seeded successfully!");
 
     console.log("⭐ Database Seeding completed successfully!");
   } catch (error) {

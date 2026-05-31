@@ -49,20 +49,42 @@ def extract_records(payload):
 
 
 def fetch_collection(name: str, endpoint: str) -> pd.DataFrame:
-    url = f"{BACKEND_API_BASE_URL}{endpoint}"
-    logger.info(f"Fetching {name}: {url}")
+    all_records = []
+    page = 1
+    limit = 100
+    
+    logger.info(f"Fetching all pages for {name} from {BACKEND_API_BASE_URL}{endpoint}...")
 
     try:
-        response = requests.get(url, timeout=120)
+        while True:
+            separator = "&" if "?" in endpoint else "?"
+            url = f"{BACKEND_API_BASE_URL}{endpoint}{separator}page={page}&limit={limit}"
+            
+            response = requests.get(url, timeout=120)
 
-        if response.status_code == 404:
-            logger.warning(f"Skipping {name}: endpoint not found")
+            if response.status_code == 404:
+                if page == 1:
+                    logger.warning(f"Skipping {name}: endpoint not found")
+                break
+
+            response.raise_for_status()
+            records = extract_records(response.json())
+            
+            if not records:
+                break
+
+            all_records.extend(records)
+            
+            if len(records) < limit:
+                break
+                
+            page += 1
+
+        if not all_records:
+            logger.warning(f"No records found for {name}")
             return pd.DataFrame()
 
-        response.raise_for_status()
-        records = extract_records(response.json())
-        df = pd.json_normalize(records)
-
+        df = pd.json_normalize(all_records)
         output_path = RAW_DATA_DIR / f"{name}.csv"
         df.to_csv(output_path, index=False)
 

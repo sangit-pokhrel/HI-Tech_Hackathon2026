@@ -8,6 +8,8 @@ export interface IUser {
   user_code: string;
   name: string;
   phone: string;
+  email?: string;
+  password?: string;
   user_type: string; // MERCHANT, CUSTOMER, BOTH
   location: {
     province?: string;
@@ -28,10 +30,12 @@ const userSchema = new Schema<IUser>(
     user_code: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     phone: { type: String, required: true, unique: true },
+    email: { type: String, unique: true, sparse: true },
+    password: { type: String },
     user_type: {
       type: String,
       required: true,
-      enum: ["MERCHANT", "CUSTOMER", "BOTH"],
+      enum: ["MERCHANT", "CUSTOMER", "BOTH", "ADMIN"],
       default: "CUSTOMER",
     },
     location: {
@@ -54,6 +58,23 @@ const userSchema = new Schema<IUser>(
     _id: false,
   }
 );
+
+// Pre-save hook to hash the password before saving
+userSchema.pre("save", function (next) {
+  const user = this as any;
+  if (!user.isModified("password") || !user.password) return next();
+
+  try {
+    // Hash password using Bun's native high-performance password hashing
+    user.password = Bun.password.hashSync(user.password, {
+      algorithm: "bcrypt",
+      cost: 10,
+    });
+    next();
+  } catch (err: any) {
+    next(err);
+  }
+});
 
 export const User = mongoose.models.User || model<IUser>("User", userSchema);
 
@@ -746,7 +767,7 @@ export const ModelPrediction =
 
 // ==========================================
 // 14. CREDIT SCORE SCHEMA & INTERFACE
-// Final F1-F5 + ML blended SajiloScore/Bishwas Score
+// Final F1-F5 + ML blended Nagarik Credits Score
 // ==========================================
 export interface ICreditScore {
   _id: string;
@@ -764,7 +785,7 @@ export interface ICreditScore {
     default_probability: number;
     repayment_probability: number;
   };
-  final_sajilo_score: number;
+  final_nagarik_credits_score: number;
   risk_band: string;
   decision: string;
   suggested_loan_amount: number;
@@ -793,7 +814,7 @@ const creditScoreSchema = new Schema<ICreditScore>(
       default_probability: { type: Number, required: true, min: 0, max: 1 },
       repayment_probability: { type: Number, required: true, min: 0, max: 1 },
     },
-    final_sajilo_score: { type: Number, required: true, min: 0, max: 1000 },
+    final_nagarik_credits_score: { type: Number, required: true, min: 0, max: 1000 },
     risk_band: {
       type: String,
       required: true,
@@ -823,7 +844,7 @@ const creditScoreSchema = new Schema<ICreditScore>(
 creditScoreSchema.index({ merchant_id: 1 });
 creditScoreSchema.index({ risk_band: 1 });
 creditScoreSchema.index({ decision: 1 });
-creditScoreSchema.index({ final_sajilo_score: -1 });
+creditScoreSchema.index({ final_nagarik_credits_score: -1 });
 creditScoreSchema.index({ "factor_scores.fraud_penalty": -1 });
 
 export const CreditScore =

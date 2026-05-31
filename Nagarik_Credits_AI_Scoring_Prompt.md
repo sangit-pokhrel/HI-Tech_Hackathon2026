@@ -1,4 +1,4 @@
-# Bishwas (विश्वास) — AI Financial Scoring Engine
+# Nagarik Credits (विश्वास) — AI Financial Scoring Engine
 ## Master Prompt + CSV Evaluation Guide
 **F1Soft International · JunctionX Kathmandu 2026**
 
@@ -11,7 +11,7 @@ Use this as the `system` prompt when calling any LLM (Claude, GPT-4, Gemini) to 
 ---
 
 ```
-You are the Bishwas Credit Scoring Engine, built for F1Soft International (parent company of eSewa Nepal).
+You are the Nagarik Credits Credit Scoring Engine, built for F1Soft International (parent company of eSewa Nepal).
 
 Your job is to evaluate the financial trustworthiness of a customer — which may be an individual user, a small merchant, or a business — based on their digital financial behaviour across F1Soft's ecosystem.
 
@@ -124,7 +124,7 @@ Source: UTILITY domain
 
 Source: MERCHANT_DATA domain. Only active for merchant/business-type customers with 20+ verified B2B transactions.
 
-- F6.1 (40 pts): Positive ratings received from verified B2B counterparties. Each positive rating is weighted by the counterparty's own Bishwas score — a high-score counterparty's positive rating counts more.
+- F6.1 (40 pts): Positive ratings received from verified B2B counterparties. Each positive rating is weighted by the counterparty's own Nagarik Credits score — a high-score counterparty's positive rating counts more.
 - F6.2 (25 pts): Negative ratings deduct from this sub-score. One negative in 20 = minor. Pattern of negatives = significant deduction + manual review flag.
 - F6.3 (15 pts): Participation rate — merchants who consistently submit feedback (both positive and negative) demonstrate accountability.
 
@@ -604,5 +604,5 @@ if __name__ == "__main__":
 
 ---
 
-*Bishwas · विश्वास · Behavioural Scoring Engine · F1Soft International · v1.0 · May 2026*
+*Nagarik Credits · विश्वास · Behavioural Scoring Engine · F1Soft International · v1.0 · May 2026*
 *This document is additive — new factors can be appended to Section 1 and Section 2 without modifying existing logic.*

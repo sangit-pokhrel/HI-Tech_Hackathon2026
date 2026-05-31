@@ -8,6 +8,8 @@ export const userRoutes = new Elysia({ prefix: "/api/users" })
       user_code: t.String({ minLength: 1 }),
       name: t.String({ minLength: 1 }),
       phone: t.String({ minLength: 1 }),
+      email: t.Optional(t.String()),
+      password: t.Optional(t.String()),
       user_type: t.Optional(t.String()),
       location: t.Object({
         province: t.Optional(t.String()),
@@ -52,6 +54,8 @@ export const userRoutes = new Elysia({ prefix: "/api/users" })
     body: t.Object({
       name: t.Optional(t.String()),
       phone: t.Optional(t.String()),
+      email: t.Optional(t.String()),
+      password: t.Optional(t.String()),
       user_type: t.Optional(t.String()),
       location: t.Optional(
         t.Object({

@@ -1,0 +1,36 @@
+{
+  "merchant_id": "MRC-99999",
+  "merchant_code": "MRC-99999",
+  "merchant_user_id": "USR-99999",
+  "scores": {
+    "f1_livelihood_rhythm": 80,
+    "f2_cash_flow_elasticity": 78,
+    "f3_smart_digital_footprint": 151,
+    "f4_community_trust_graph": 94,
+    "f5_psychometric": 100,
+    "fraud_penalty": 0,
+    "rule_based_sajilo_score": 503,
+    "ml_repayment_score": 1000,
+    "final_sajilo_score": 702
+  },
+  "probabilities": {
+    "default_probability": 0.0,
+    "repayment_probability": 1.0
+  },
+  "loan_recommendation": {
+    "risk_band": "SILVER",
+    "decision": "APPROVED",
+    "suggested_loan_amount": 32796,
+    "repayment_plan": "WEEKLY"
+  },
+  "explanation": {
+    "summary": "Merchant MRC-99999 received a SajiloScore of 702. The decision is APPROVED with WEEKLY repayment.",
+    "positive_factors": [
+      "Consistent livelihood rhythm",
+      "Reliable smart digital footprint",
+      "Strong psychometric profile"
+    ],
+    "risk_factors": []
+  },
+  "predicted_at": "2026-05-30T09:42:07.110594+00:00"
+}

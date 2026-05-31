@@ -1,4 +1,4 @@
-# SajiloScore / Bishwas ML Service
+# Nagarik Credits ML Service
 
 This ML service matches the updated backend schema where:
 - `User` is centralized.

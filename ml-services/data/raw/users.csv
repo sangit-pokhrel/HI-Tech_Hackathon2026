@@ -1,0 +1,107 @@
+_id,user_code,name,phone,user_type,verified_status,balance,is_active,created_at,updated_at,__v,location.province,location.district,location.municipality,location.ward_no
+USR-6969,USR-6969,Worst Record Merchant,9806969696,BOTH,verified,10,True,2026-04-30T13:03:25.000Z,2026-04-30T13:03:25.000Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,13
+USR-6666,USR-6666,Bad New Merchant,9806666666,BOTH,verified,5,True,2026-04-25T03:35:46.000Z,2026-04-25T03:35:46.000Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,6
+USR-00031,USR-00031,Sunil Karki,9800000031,BOTH,verified,33068,True,2026-02-25T02:58:00.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,8
+USR-00094,USR-00094,Rita Adhikari,9800000094,CUSTOMER,verified,46550,True,2026-02-23T12:53:20.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,26
+USR-00048,USR-00048,Sushma Rai,9800000048,BOTH,verified,9759,True,2026-02-22T15:41:14.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,14
+USR-00011,USR-00011,Sarita Lama,9800000011,MERCHANT,verified,55837,True,2026-02-22T10:55:14.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,12
+USR-00098,USR-00098,Srijana Lama,9800000098,CUSTOMER,verified,43084,True,2026-02-22T01:59:23.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Bhaktapur,Madhyapur Thimi,6
+USR-00060,USR-00060,Sarita Rai,9800000060,CUSTOMER,verified,20383,True,2026-02-20T13:31:42.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,6
+USR-00042,USR-00042,Rupa Khadka,9800000042,BOTH,verified,54177,True,2026-02-19T16:06:33.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,4
+USR-00064,USR-00064,Bikash Maharjan,9800000064,CUSTOMER,verified,41617,True,2026-02-17T10:27:49.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,29
+USR-00061,USR-00061,Sabina Karki,9800000061,CUSTOMER,verified,56953,True,2026-02-06T01:29:09.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,4
+USR-00088,USR-00088,Deepak Shrestha,9800000088,CUSTOMER,verified,56919,True,2026-02-02T15:57:43.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,23
+USR-00074,USR-00074,Roshan Karki,9800000074,CUSTOMER,verified,69037,True,2026-02-02T13:55:30.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,20
+USR-00087,USR-00087,Sabina Gurung,9800000087,CUSTOMER,verified,73741,True,2026-02-01T02:28:56.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,12
+USR-00054,USR-00054,Rita Joshi,9800000054,CUSTOMER,verified,19920,True,2026-01-30T08:47:27.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,32
+USR-00037,USR-00037,Umesh Lama,9800000037,BOTH,verified,13161,True,2026-01-29T05:36:12.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,11
+USR-00065,USR-00065,Roshan Thapa,9800000065,CUSTOMER,verified,11580,True,2026-01-28T11:19:26.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,4
+USR-00057,USR-00057,Ramesh Khadka,9800000057,CUSTOMER,verified,24779,True,2026-01-26T11:10:48.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,24
+USR-00096,USR-00096,Srijana Sharma,9800000096,CUSTOMER,verified,15110,True,2026-01-22T12:56:14.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,25
+USR-00012,USR-00012,Krishna Sapkota,9800000012,MERCHANT,verified,37878,True,2026-01-22T08:33:12.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Pokhara,Pokhara Metropolitan City,25
+USR-00026,USR-00026,Nabin Bhandari,9800000026,MERCHANT,verified,74955,True,2026-01-06T15:06:10.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,14
+USR-00092,USR-00092,Deepak Sapkota,9800000092,CUSTOMER,verified,47501,True,2026-01-04T03:07:42.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,1
+USR-00030,USR-00030,Pratima Sapkota,9800000030,MERCHANT,verified,26952,True,2026-01-02T07:36:57.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,21
+USR-00038,USR-00038,Srijana Maharjan,9800000038,BOTH,verified,73458,True,2025-12-30T06:46:24.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,6
+USR-00095,USR-00095,Suman K.C.,9800000095,CUSTOMER,verified,44387,True,2025-12-29T07:52:41.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,11
+USR-00024,USR-00024,Raj Kumar Lama,9800000024,MERCHANT,verified,11275,True,2025-12-28T07:24:03.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,13
+USR-00033,USR-00033,Roshan Rai,9800000033,BOTH,verified,38034,True,2025-12-25T15:51:07.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,25
+USR-00056,USR-00056,Suman Khadka,9800000056,CUSTOMER,verified,17360,True,2025-12-25T14:01:37.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,4
+USR-00005,USR-00005,Anita Karki,9800000005,MERCHANT,verified,32530,True,2025-12-25T10:56:56.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,25
+USR-00086,USR-00086,Sunita Karki,9800000086,CUSTOMER,verified,48440,True,2025-12-24T06:16:33.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,18
+USR-00083,USR-00083,Sarita Khadka,9800000083,CUSTOMER,verified,25268,True,2025-12-22T09:13:36.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,18
+USR-00090,USR-00090,Suman Maharjan,9800000090,CUSTOMER,verified,10329,True,2025-12-21T15:36:14.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,30
+USR-00046,USR-00046,Laxmi Sapkota,9800000046,BOTH,verified,41898,True,2025-12-16T13:43:59.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Bhaktapur,Madhyapur Thimi,15
+USR-00016,USR-00016,Sanjay Shrestha,9800000016,MERCHANT,verified,69192,True,2025-12-16T06:39:11.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,31
+USR-00080,USR-00080,Suman Karki,9800000080,CUSTOMER,verified,36061,True,2025-12-14T01:19:20.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,25
+USR-00076,USR-00076,Hari Tamang,9800000076,CUSTOMER,verified,14957,True,2025-12-11T03:59:41.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,30
+USR-00044,USR-00044,Mina Joshi,9800000044,BOTH,verified,61729,True,2025-12-09T08:21:55.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,32
+USR-00009,USR-00009,Nisha Maharjan,9800000009,MERCHANT,verified,67930,True,2025-12-04T05:07:46.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,11
+USR-00069,USR-00069,Deepak Karki,9800000069,CUSTOMER,verified,68672,True,2025-12-03T11:45:51.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,23
+USR-00071,USR-00071,Rita Sapkota,9800000071,CUSTOMER,verified,18178,True,2025-12-03T10:00:21.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,11
+USR-00021,USR-00021,Sabina Rai,9800000021,MERCHANT,verified,11447,True,2025-12-01T06:17:07.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Pokhara,Pokhara Metropolitan City,15
+USR-00084,USR-00084,Suman Sharma,9800000084,CUSTOMER,verified,30531,True,2025-11-30T02:14:11.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,5
+USR-00025,USR-00025,Sujata Sharma,9800000025,MERCHANT,verified,59448,True,2025-11-22T05:50:56.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,8
+USR-00045,USR-00045,Rajendra Bhandari,9800000045,BOTH,verified,29898,True,2025-11-22T03:47:23.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,30
+USR-00018,USR-00018,Milan Thapa,9800000018,MERCHANT,verified,36509,True,2025-11-17T05:39:54.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,20
+USR-00062,USR-00062,Sunita Gurung,9800000062,CUSTOMER,verified,40425,True,2025-11-15T15:29:20.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,15
+USR-00085,USR-00085,Roshan Maharjan,9800000085,CUSTOMER,verified,51159,True,2025-11-12T14:39:24.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,16
+USR-00093,USR-00093,Rita Adhikari,9800000093,CUSTOMER,verified,38961,True,2025-11-11T13:24:49.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Pokhara,Pokhara Metropolitan City,27
+USR-00049,USR-00049,Hemanta Gurung,9800000049,BOTH,verified,65839,True,2025-11-10T05:42:36.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Pokhara,Pokhara Metropolitan City,7
+USR-00079,USR-00079,Rita Tamang,9800000079,CUSTOMER,verified,71629,True,2025-11-05T12:19:00.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,4
+USR-00082,USR-00082,Rita Pandey,9800000082,CUSTOMER,verified,28953,True,2025-11-01T04:47:24.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Pokhara,Pokhara Metropolitan City,17
+USR-00020,USR-00020,Bibek K.C.,9800000020,MERCHANT,verified,67019,True,2025-10-17T03:05:34.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,32
+USR-00032,USR-00032,Asmita Gurung,9800000032,BOTH,verified,17397,True,2025-10-15T10:56:47.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,30
+USR-00003,USR-00003,Sita Sharma,9800000003,MERCHANT,verified,53688,True,2025-10-14T01:31:04.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,28
+USR-00089,USR-00089,Amit Bhandari,9800000089,CUSTOMER,verified,57532,True,2025-10-13T08:35:49.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,21
+USR-00052,USR-00052,Binita Shrestha,9800000052,CUSTOMER,verified,52243,True,2025-10-13T05:13:21.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,16
+USR-00050,USR-00050,Alisha Tamang,9800000050,BOTH,verified,29001,True,2025-10-11T06:41:29.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,20
+USR-00063,USR-00063,Bibek K.C.,9800000063,CUSTOMER,verified,41725,True,2025-10-06T04:19:45.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,32
+USR-00077,USR-00077,Manisha Sapkota,9800000077,CUSTOMER,verified,14775,True,2025-09-18T06:23:25.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,31
+USR-00081,USR-00081,Prakash Maharjan,9800000081,CUSTOMER,verified,67764,True,2025-09-12T07:11:12.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,1
+USR-00055,USR-00055,Roshan Rai,9800000055,CUSTOMER,verified,6045,True,2025-09-10T10:50:46.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,23
+USR-00010,USR-00010,Deepak Bhandari,9800000010,MERCHANT,verified,64703,True,2025-09-08T05:34:31.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,4
+USR-00066,USR-00066,Roshan Maharjan,9800000066,CUSTOMER,verified,32246,True,2025-09-07T01:27:32.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,29
+USR-00059,USR-00059,Anil Adhikari,9800000059,CUSTOMER,verified,72037,True,2025-09-04T12:03:00.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,21
+USR-00014,USR-00014,Amit Joshi,9800000014,MERCHANT,verified,28463,True,2025-09-01T08:13:09.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,8
+USR-00040,USR-00040,Bimala Sharma,9800000040,BOTH,verified,49389,True,2025-08-27T13:07:11.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,29
+USR-00036,USR-00036,Kabita Thapa,9800000036,BOTH,verified,54830,True,2025-08-21T09:15:44.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,7
+USR-00068,USR-00068,Rajesh Thapa,9800000068,CUSTOMER,verified,67763,True,2025-08-12T07:47:47.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,19
+USR-00019,USR-00019,Rojina Tamang,9800000019,MERCHANT,verified,40728,True,2025-08-10T01:43:26.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,24
+USR-00091,USR-00091,Bibek Maharjan,9800000091,CUSTOMER,verified,16141,True,2025-08-05T15:27:47.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,8
+USR-00072,USR-00072,Deepak Shrestha,9800000072,CUSTOMER,verified,19192,True,2025-08-05T15:05:21.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,29
+USR-00070,USR-00070,Puja Karki,9800000070,CUSTOMER,verified,6287,True,2025-08-04T13:51:42.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,14
+USR-00047,USR-00047,Niraj Karki,9800000047,BOTH,verified,38118,True,2025-08-02T15:59:59.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,22
+USR-00035,USR-00035,Sagar Shrestha,9800000035,BOTH,verified,56562,True,2025-07-31T13:17:42.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,3
+USR-00015,USR-00015,Prakash Pandey,9800000015,MERCHANT,verified,66125,True,2025-07-22T09:51:38.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,3
+USR-00002,USR-00002,Ram Bahadur Thapa,9800000002,MERCHANT,verified,65271,True,2025-07-20T13:00:52.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,21
+USR-00013,USR-00013,Binita Khadka,9800000013,MERCHANT,verified,23793,True,2025-07-20T06:28:06.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,12
+USR-00067,USR-00067,Bibek Bhandari,9800000067,CUSTOMER,verified,26374,True,2025-07-16T05:54:48.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,29
+USR-00022,USR-00022,Dipesh Maharjan,9800000022,MERCHANT,verified,23150,True,2025-07-11T04:35:09.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,5
+USR-00039,USR-00039,Dinesh Adhikari,9800000039,BOTH,verified,72472,True,2025-07-07T03:42:07.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Chitwan,Bharatpur Metropolitan City,20
+USR-00075,USR-00075,Nisha Sapkota,9800000075,CUSTOMER,verified,13501,True,2025-07-05T03:18:45.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,21
+USR-00078,USR-00078,Suman Sapkota,9800000078,CUSTOMER,verified,31513,True,2025-07-04T04:01:22.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Pokhara,Pokhara Metropolitan City,6
+USR-00008,USR-00008,Suman Rai,9800000008,MERCHANT,verified,37889,True,2025-06-21T07:44:16.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Butwal,Butwal Sub-Metropolitan City,5
+USR-00097,USR-00097,Srijana K.C.,9800000097,CUSTOMER,verified,5843,True,2025-06-18T08:17:44.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,16
+USR-00006,USR-00006,Ramesh Adhikari,9800000006,MERCHANT,verified,16735,True,2025-06-13T10:06:58.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,18
+USR-00058,USR-00058,Deepak Joshi,9800000058,CUSTOMER,verified,43349,True,2025-06-08T10:36:19.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Pokhara,Pokhara Metropolitan City,23
+USR-00099,USR-00099,Rajesh Tamang,9800000099,CUSTOMER,verified,71240,True,2025-06-07T04:38:57.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,16
+USR-00028,USR-00028,Kiran Pandey,9800000028,MERCHANT,verified,66871,True,2025-06-05T12:31:35.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,21
+USR-00051,USR-00051,Rita Karki,9800000051,CUSTOMER,verified,9584,True,2025-06-03T15:42:24.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Bhaktapur,Madhyapur Thimi,20
+USR-00034,USR-00034,Pabitra Tamang,9800000034,BOTH,verified,73934,True,2025-05-28T08:54:21.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Hetauda,Hetauda Sub-Metropolitan City,11
+USR-00017,USR-00017,Kalpana Gurung,9800000017,MERCHANT,verified,8194,True,2025-05-24T14:05:23.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Nepalgunj,Nepalgunj Sub-Metropolitan City,2
+USR-00041,USR-00041,Arjun K.C.,9800000041,BOTH,verified,10937,True,2025-05-22T06:39:52.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,11
+USR-00007,USR-00007,Puja Tamang,9800000007,MERCHANT,verified,66228,True,2025-05-20T13:37:41.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Bhaktapur,Madhyapur Thimi,30
+USR-00001,USR-00001,Maya Shrestha,9800000001,MERCHANT,verified,69822,True,2025-05-18T14:29:50.000Z,2026-05-30T09:48:29.595Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,9
+6a1ab52edaea0257c4dc1874,USS-00001,Maya Shrestha,9700000011,MERCHANT,verified,69822,True,2025-05-18T14:29:50.000Z,2026-05-30T09:48:29.595Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,9
+USR-00004,USR-00004,Bishal Gurung,9800000004,MERCHANT,verified,29335,True,2025-05-18T03:57:01.000Z,2026-05-30T09:48:29.596Z,0,Bagmati,Bhaktapur,Madhyapur Thimi,13
+USR-00023,USR-00023,Manisha Adhikari,9800000023,MERCHANT,verified,51146,True,2025-05-14T08:59:04.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Bhaktapur,Madhyapur Thimi,2
+USR-00043,USR-00043,Santosh Pandey,9800000043,BOTH,verified,54810,True,2025-05-13T03:30:44.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,31
+USR-00053,USR-00053,Suman Maharjan,9800000053,CUSTOMER,verified,33106,True,2025-05-12T13:37:58.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Pokhara,Pokhara Metropolitan City,11
+USR-00100,USR-00100,Nisha K.C.,9800000100,CUSTOMER,verified,19832,True,2025-05-10T03:50:01.000Z,2026-05-30T09:48:29.599Z,0,Bagmati,Dharan,Dharan Sub-Metropolitan City,3
+USR-00027,USR-00027,Rita Khadka,9800000027,MERCHANT,verified,48859,True,2025-05-09T11:21:06.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Biratnagar,Biratnagar Metropolitan City,11
+USR-00029,USR-00029,Anil Joshi,9800000029,MERCHANT,verified,42662,True,2025-05-07T08:59:59.000Z,2026-05-30T09:48:29.597Z,0,Bagmati,Bhaktapur,Madhyapur Thimi,9
+USR-00073,USR-00073,Suman Sharma,9800000073,CUSTOMER,verified,15399,True,2025-05-04T14:32:00.000Z,2026-05-30T09:48:29.598Z,0,Bagmati,Lalitpur,Lalitpur Metropolitan City,30
+USR-99999,USR-99999,Siddharth Perfect Merchant,9809999999,BOTH,verified,150000,True,2024-01-01T00:00:00.000Z,2024-01-01T00:00:00.000Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,1
+USR-7777,USR-7777,Best New Merchant,9807777777,BOTH,verified,350000,True,2023-05-01T00:00:00.000Z,2023-05-01T00:00:00.000Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,7
+USR-5555,USR-5555,Best Record Merchant,9805555555,BOTH,verified,200000,True,2023-01-01T00:00:00.000Z,2023-01-01T00:00:00.000Z,0,Bagmati,Kathmandu,Kathmandu Metropolitan City,1
