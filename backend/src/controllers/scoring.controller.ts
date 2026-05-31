@@ -113,7 +113,9 @@ export const getNagarikCreditsScore = async ({ params: { id }, set }: any) => {
     const merchant = await Merchant.findOne({ user_id: id });
 
     // 3. Check for pre-calculated CreditScore
-    const creditScore = merchant ? await CreditScore.findOne({ merchant_id: merchant._id }) : null;
+    const creditScore = merchant
+      ? await CreditScore.findOne({ merchant_id: merchant._id })
+      : await CreditScore.findOne({ merchant_id: id });
 
     if (creditScore) {
       return {
@@ -319,6 +321,46 @@ export const computeNagarikCreditsScore = async ({ params: { id }, body, set }: 
     const finalScore = scores.final_nagarik_credits_score ?? scores.ml_repayment_score ?? 0;
     const defaultProb = probs.default_probability ?? 0.5;
     const repaymentProb = probs.repayment_probability ?? 0.5;
+    const riskBand = loan.risk_band ?? "THIN_FILE";
+    const decision = loan.decision ?? "REVIEW";
+    const suggestedLoanAmount = loan.suggested_loan_amount ?? 0;
+    const repaymentPlan = loan.repayment_plan ?? "WEEKLY";
+    const explanationText = explanation.summary ?? "Nagarik Credits score computed from psychometric and behavioral signals.";
+    const merchantId = merchant ? merchant._id.toString() : id;
+
+    await CreditScore.findByIdAndUpdate(
+      merchantId,
+      {
+        _id: merchantId,
+        merchant_id: merchantId,
+        factor_scores: {
+          f1_livelihood_rhythm: scores.f1_livelihood_rhythm ?? 0,
+          f2_cash_flow_elasticity: scores.f2_cash_flow_elasticity ?? 0,
+          f3_smart_digital_footprint: scores.f3_smart_digital_footprint ?? 0,
+          f4_community_trust_graph: scores.f4_community_trust_graph ?? 0,
+          f5_psychometric: scores.f5_psychometric ?? Math.round(psychometric_avg / 10),
+          fraud_penalty: scores.fraud_penalty ?? 0,
+        },
+        ml_scores: {
+          ml_repayment_score: scores.ml_repayment_score ?? finalScore,
+          default_probability: defaultProb,
+          repayment_probability: repaymentProb,
+        },
+        final_nagarik_credits_score: finalScore,
+        risk_band: riskBand,
+        decision,
+        suggested_loan_amount: suggestedLoanAmount,
+        repayment_plan: repaymentPlan,
+        fraud_flags: mlResult.fraud_flags ?? [],
+        explanation: explanationText,
+        calculated_at: new Date(),
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    );
 
     return {
       success: true,
