@@ -73,7 +73,7 @@ export default function LoansPage() {
       const scoreData = await scoreRes.json();
       if (!scoreRes.ok && scoreData.error_code === "NO_SCORE_RECORD") {
         setHasNoScore(true);
-        setLoading(false);
+        router.replace("/credits?redirectReason=no-score");
         return;
       }
 

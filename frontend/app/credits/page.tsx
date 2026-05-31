@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -221,7 +222,7 @@ export default function CreditsPage() {
   }, []);
 
   // ---- Fetch existing score ----
-  const fetchScoreData = useCallback(async () => {
+  const fetchScoreData = useCallback(async (options?: { refresh?: boolean }) => {
     if (!session || !currentUser?.id) return;
     setLoading(true);
     setError("");
@@ -230,7 +231,8 @@ export default function CreditsPage() {
     setComputedScore(null);
 
     try {
-      const res = await fetch(`/api/users/${currentUser.id}/score`, {
+      const query = options?.refresh ? "?refresh=true" : "";
+      const res = await fetch(`/api/users/${currentUser.id}/score${query}`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${(session as any).accessToken}`,
@@ -342,7 +344,7 @@ export default function CreditsPage() {
   return (
     <DashboardLayout
       scoreLoading={loading}
-      onRecalculate={fetchScoreData}
+      onRecalculate={() => fetchScoreData({ refresh: true })}
       showRecalculate={!!scoreData && !computedScore}
     >
       {/* Redirect warning banner */}
@@ -405,6 +407,7 @@ export default function CreditsPage() {
               </span>
             </div>
           </div>
+          <ScoreInsightsPanel result={scoreData} onRefresh={() => fetchScoreData({ refresh: true })} />
         </div>
 
       ) : stage === "intro" && dataProfile ? (
@@ -733,6 +736,138 @@ function ComputingView({ step }: { step: number }) {
   );
 }
 
+function ScoreInsightsPanel({ result, onRefresh }: { result: any; onRefresh: () => void }) {
+  const explanationSummary: string = result.explanation_summary ?? "";
+  const topImprovementAction: string = result.top_improvement_action ?? explanationSummary;
+  const positiveFactors: string[] = result.positive_factors ?? [];
+  const riskFactors: string[] = result.risk_factors ?? [];
+  const scoreSource = result.score_source ?? "stored";
+  const calculatedAtLabel = result.calculated_at
+    ? new Date(result.calculated_at).toLocaleString()
+    : null;
+
+  const factorHighlights = [
+    {
+      label: "Transaction consistency",
+      value: result.factor_breakdown?.F1_transaction_consistency?.score,
+      max: result.factor_breakdown?.F1_transaction_consistency?.max,
+    },
+    {
+      label: "Cashflow health",
+      value: result.factor_breakdown?.F2_cashflow_health?.score,
+      max: result.factor_breakdown?.F2_cashflow_health?.max,
+    },
+    {
+      label: "Payment reliability",
+      value: result.factor_breakdown?.F3_payment_reliability?.score,
+      max: result.factor_breakdown?.F3_payment_reliability?.max,
+    },
+    {
+      label: "Integrity",
+      value: result.factor_breakdown?.F4_integrity?.score,
+      max: result.factor_breakdown?.F4_integrity?.max,
+    },
+  ].filter((item) => typeof item.value === "number");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+        <span className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1 font-semibold uppercase tracking-wider text-slate-300">
+          {scoreSource === "stored" ? "Saved score" : scoreSource === "stored_fallback" ? "Saved fallback" : "Live score"}
+        </span>
+        {calculatedAtLabel && (
+          <span className="rounded-full border border-slate-800 bg-slate-900/40 px-3 py-1 font-semibold">
+            Last calculated {calculatedAtLabel}
+          </span>
+        )}
+      </div>
+
+      {result.warning && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs font-medium text-amber-400">
+          {result.warning}
+        </div>
+      )}
+
+      {(explanationSummary || topImprovementAction) && (
+        <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+          <div className="flex items-center gap-2 mb-1.5">
+            <BookOpen className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Why this score</span>
+          </div>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            {topImprovementAction || explanationSummary}
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Stored score factors</span>
+          </div>
+          {positiveFactors.length > 0 || riskFactors.length > 0 ? (
+            <div className="space-y-3 text-sm text-slate-300">
+              {positiveFactors.slice(0, 3).map((factor: string, index: number) => (
+                <div key={`positive-${index}`} className="flex items-start gap-2">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  {factor}
+                </div>
+              ))}
+              {riskFactors.slice(0, 3).map((factor: string, index: number) => (
+                <div key={`risk-${index}`} className="flex items-start gap-2">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-red-400 flex-shrink-0" />
+                  {factor}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2 text-sm text-slate-300">
+              {factorHighlights.map((item) => (
+                <div key={item.label} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2">
+                  <span className="text-slate-400">{item.label}</span>
+                  <span className="font-bold text-slate-100">
+                    {item.value}/{item.max}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+          <div className="flex items-center gap-2 mb-3">
+            <Network className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Snapshot</span>
+          </div>
+          <div className="space-y-3 text-sm text-slate-300">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-widest text-slate-500">Repayment confidence</p>
+              <p className="text-xl font-bold text-slate-100 mt-2">
+                {result.ml_prediction?.repayment_probability
+                  ? `${(result.ml_prediction.repayment_probability * 100).toFixed(1)}%`
+                  : "N/A"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-widest text-slate-500">Integrity flags</p>
+              <p className="text-xl font-bold text-slate-100 mt-2">{result.flags?.length ?? 0}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={onRefresh}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-900/70 text-slate-400 hover:text-slate-200 text-sm font-semibold transition-all cursor-pointer"
+      >
+        <RotateCw className="w-4 h-4" />
+        Refresh With Latest Activity
+      </button>
+    </div>
+  );
+}
+
 function ComputedScoreView({ result, onRefresh }: { result: any; onRefresh: () => void }) {
   const score = result.score ?? 0;
   const band = result.score_band ?? "THIN_FILE";
@@ -746,6 +881,10 @@ function ComputedScoreView({ result, onRefresh }: { result: any; onRefresh: () =
   const positiveFactors: string[] = result.positive_factors ?? [];
   const riskFactors: string[] = result.risk_factors ?? [];
   const explanationSummary: string = result.explanation_summary ?? "";
+  const topImprovementAction: string =
+    result.top_improvement_action ??
+    explanationSummary ??
+    "The alternative credit score blends your psychometric answers with transaction behavior and community integrity signals.";
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto" style={{ animation: "fadeSlideIn 0.4s ease" }}>
@@ -840,6 +979,64 @@ function ComputedScoreView({ result, onRefresh }: { result: any; onRefresh: () =
         </div>
       )}
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Why this score?</span>
+          </div>
+          <p className="text-sm text-slate-400 leading-relaxed mb-4">
+            {topImprovementAction}
+          </p>
+          <ul className="space-y-2 text-sm text-slate-300">
+            {positiveFactors.length > 0 ? (
+              positiveFactors.slice(0, 3).map((factor: string, i: number) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  {factor}
+                </li>
+              ))
+            ) : (
+              <>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  Strong repayment discipline and transaction consistency.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  High psychometric reliability and planning attitude.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  Healthy community trust and social reputation signals.
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
+
+        <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Network className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Social Trust Snapshot</span>
+          </div>
+          <div className="space-y-3 text-sm text-slate-300">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-widest text-slate-500">Community Integrity</p>
+              <p className="text-xl font-bold text-slate-100 mt-2">
+                {result.factor_breakdown?.F4_integrity?.score ?? "--"}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1">Higher values indicate stronger social trust and collusion immunity.</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-widest text-slate-500">Flag Count</p>
+              <p className="text-xl font-bold text-slate-100 mt-2">{result.flags?.length ?? 0}</p>
+              <p className="text-[11px] text-slate-500 mt-1">Detected integrity or behavior alerts.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Positive factors */}
       {positiveFactors.length > 0 && (
         <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-2">
@@ -873,17 +1070,21 @@ function ComputedScoreView({ result, onRefresh }: { result: any; onRefresh: () =
       )}
 
       {/* Loan suggestion */}
-      {result.suggested_loan_amount > 0 && (
-        <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Suggested Loan Amount</p>
-            <p className="text-xl font-extrabold text-slate-100 mt-1">
-              NPR {result.suggested_loan_amount.toLocaleString()}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-500">Repayment Plan</p>
-            <p className="text-sm font-bold text-slate-300 mt-0.5">{result.repayment_plan}</p>
+      {(result.suggested_loan_amount > 0 || !result.suggested_loan_amount) && (
+        <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/40">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Loan Recommendation</p>
+              {result.suggested_loan_amount > 0 ? (
+                <p className="text-lg font-extrabold text-slate-100 mt-2">NPR {result.suggested_loan_amount.toLocaleString()}</p>
+              ) : (
+                <p className="text-sm text-slate-400 mt-2">Your score qualifies you to request a micro-credit product. Proceed to loan request for exact matching.</p>
+              )}
+            </div>
+            <Link href="/loans" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition-all">
+              Request Loan
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       )}

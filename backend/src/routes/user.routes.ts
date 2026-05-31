@@ -30,6 +30,7 @@ export const userRoutes = new Elysia({ prefix: "/api/users" })
     query: t.Object({
       limit: t.Optional(t.String()),
       page: t.Optional(t.String()),
+      user_code: t.Optional(t.String()),
       user_type: t.Optional(t.String()),
       verified_status: t.Optional(t.String()),
     }),

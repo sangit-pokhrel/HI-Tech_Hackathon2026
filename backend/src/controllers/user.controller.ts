@@ -26,6 +26,9 @@ export const getAllUsers = async ({ query, set }: any) => {
     const skip = (page - 1) * limit;
 
     const filter: any = {};
+    if (query.user_code) {
+      filter.user_code = query.user_code;
+    }
     if (query.user_type) {
       filter.user_type = query.user_type;
     }

@@ -12,8 +12,6 @@ import {
   Lock,
   Phone,
   User as UserIcon,
-  CheckCircle,
-  AlertTriangle,
   Coins,
   FileText,
   ArrowDownLeft,
@@ -39,12 +37,12 @@ export default function Home() {
   const [scoreData, setScoreData] = useState<any>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
   const [scoreError, setScoreError] = useState("");
+  const [displayBalance, setDisplayBalance] = useState<number>(0);
+  const [demoTxLoading, setDemoTxLoading] = useState(false);
+  const [demoTxMessage, setDemoTxMessage] = useState("");
+  const [demoTxError, setDemoTxError] = useState("");
 
-  // Apply simulation state
   const [hasNoScore, setHasNoScore] = useState(false);
-  const [isApplied, setIsApplied] = useState(false);
-  const [applyStep, setApplyStep] = useState(0);
-  const [applyLoading, setApplyLoading] = useState(false);
 
   // Customer Dashboard State
   const [customerTrans, setCustomerTrans] = useState<any[]>([]);
@@ -55,8 +53,12 @@ export default function Home() {
   const isSignedIn = status === "authenticated";
   const currentUser = session?.user as any;
 
+  useEffect(() => {
+    setDisplayBalance((session as any)?.user?.balance || 0);
+  }, [session]);
+
   // Fetch Score Data from Protected Elysia Backend
-  const fetchScoreData = useCallback(async () => {
+  const fetchScoreData = useCallback(async (options?: { refresh?: boolean }) => {
     if (!session || !currentUser?.id) return;
     setScoreLoading(true);
     setScoreError("");
@@ -65,7 +67,8 @@ export default function Home() {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3001/api";
       const token = (session as any).accessToken;
 
-      const res = await fetch(`${backendUrl}/users/${currentUser.id}/score`, {
+      const query = options?.refresh ? "?refresh=true" : "";
+      const res = await fetch(`${backendUrl}/users/${currentUser.id}/score${query}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +85,6 @@ export default function Home() {
       }
       setScoreData(data);
       setHasNoScore(false);
-      setIsApplied(false);
     } catch (err: any) {
       setScoreError(err.message || "An unexpected error occurred while fetching score.");
     } finally {
@@ -145,27 +147,53 @@ export default function Home() {
     }
   }, [isSignedIn, currentUser, router, fetchScoreData, fetchCustomerDashboardData]);
 
-  // Apply for a new Credit Score (Simulated Frontend-Only Flow)
-  const handleApplyForScore = async () => {
-    setApplyLoading(true);
-    setScoreError("");
+  const handleApplyForScore = () => {
+    router.push("/credits?redirectReason=no-score");
+  };
+
+  const handleRunDemoTransaction = async () => {
+    if (!session || !currentUser?.id) return;
+
+    setDemoTxLoading(true);
+    setDemoTxError("");
+    setDemoTxMessage("");
 
     try {
-      setApplyStep(1);
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3001/api";
+      const token = (session as any).accessToken;
 
-      setApplyStep(2);
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      const res = await fetch(`${backendUrl}/users/${currentUser.id}/score/test-transaction`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      });
 
-      setApplyStep(3);
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to create demo transaction");
+      }
 
-      setIsApplied(true);
+      if (data.updated_score) {
+        setScoreData(data.updated_score);
+        setHasNoScore(false);
+      }
+
+      if (data.transaction?.amount) {
+        setDisplayBalance((prev) => prev + Number(data.transaction.amount));
+      }
+
+      setDemoTxMessage(
+        `Test payment of NPR ${Number(data.transaction?.amount || 0).toLocaleString()} received from ${
+          data.counterparty?.name || "a verified customer"
+        }. Live ML score refreshed.`
+      );
     } catch (err: any) {
-      setScoreError("Failed to submit credit score application.");
+      setDemoTxError(err.message || "Failed to run demo transaction");
     } finally {
-      setApplyLoading(false);
-      setApplyStep(0);
+      setDemoTxLoading(false);
     }
   };
 
@@ -525,18 +553,18 @@ export default function Home() {
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nagarik Credit Score</span>
                 {hasNoScore ? (
                   <button onClick={handleApplyForScore} className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold text-xs uppercase hover:bg-emerald-500/20 transition">
-                    Apply for Score
+                    Start Evaluation
                   </button>
                 ) : null}
               </div>
               {scoreLoading ? (
                 <p className="text-2xl text-slate-500 animate-pulse">Loading...</p>
               ) : hasNoScore ? (
-                <p className="text-sm text-slate-400">No score available. Click to apply.</p>
+                <p className="text-sm text-slate-400">No score available yet. Start the evaluation in Credits.</p>
               ) : scoreData ? (
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-black text-slate-100">{scoreData.score}</span>
-                  <span className={getBandStyles(scoreData.band).bg.split(' ')[0] + ' text-sm'}>{getBandStyles(scoreData.band).label}</span>
+                  <span className={getBandStyles(scoreData.score_band).bg.split(' ')[0] + ' text-sm'}>{getBandStyles(scoreData.score_band).label}</span>
                 </div>
               ) : null}
             </div>
@@ -548,7 +576,7 @@ export default function Home() {
                 <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 font-bold text-xs uppercase">NPR Available</span>
               </div>
               <p className="text-4xl font-black text-slate-500 tracking-tight flex items-baseline gap-2">
-                NPR <span className="text-slate-100 text-5xl font-black">{session?.user ? (session as any).user.balance?.toLocaleString() || "0" : "0"}</span>
+                NPR <span className="text-slate-100 text-5xl font-black">{displayBalance.toLocaleString()}</span>
               </p>
               <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-900/60 text-xs font-semibold">
                 <div>
@@ -658,7 +686,7 @@ export default function Home() {
   return (
     <DashboardLayout
       scoreLoading={scoreLoading}
-      onRecalculate={fetchScoreData}
+      onRecalculate={() => fetchScoreData({ refresh: true })}
       showRecalculate={!hasNoScore && !!scoreData}
     >
       {scoreError && !hasNoScore && (
@@ -683,76 +711,30 @@ export default function Home() {
           </div>
         </div>
       ) : hasNoScore ? (
-        /* SIMULATED APPLY CTA OR AUDITING CHECKLIST */
+        /* Redirect to dedicated credits evaluation flow */
         <div className="relative group rounded-2xl p-[1px] bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-800 shadow-2xl backdrop-blur-xl bg-slate-950/40 max-w-2xl mx-auto my-6">
           <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-500/20 to-emerald-500/10 opacity-35 group-hover:opacity-100 blur transition duration-700" />
 
           <div className="relative p-10 rounded-2xl bg-slate-950/80 text-center">
-            {isApplied ? (
-              /* Success states */
-              <div className="animate-in fade-in zoom-in duration-500">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mx-auto mb-6">
-                  <CheckCircle className="w-8 h-8" />
-                </div>
-                <h2 className="text-2xl font-extrabold tracking-tight text-slate-100">
-                  Application Submitted Successfully
-                </h2>
-                <p className="text-sm text-slate-400 mt-3 max-w-lg mx-auto leading-relaxed">
-                  Your alternative credit profile has been queued for verification. Nagarik Credits AI models will audit your digital transactions, NEA utility bill records, and B2B reputation networks.
-                </p>
-
-                <div className="mt-8 border border-slate-900 bg-slate-900/40 p-4 rounded-xl max-w-sm mx-auto text-left space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Merchant KYC Registry</span>
-                    <span className="text-emerald-400 flex items-center gap-1 font-semibold"><CheckCircle className="w-3.5 h-3.5" /> Cleared</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">NEA Utility Database Sync</span>
-                    <span className="text-blue-400 flex items-center gap-1.5 font-semibold"><RotateCw className="w-3.5 h-3.5 animate-spin" /> In Progress</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Transaction Auditing</span>
-                    <span className="text-blue-400 flex items-center gap-1.5 font-semibold"><RotateCw className="w-3.5 h-3.5 animate-spin" /> In Progress</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Alternative Risk Calculation</span>
-                    <span className="text-slate-500 flex items-center gap-1 font-semibold">● Pending Audit</span>
-                  </div>
-                </div>
+            <>
+              <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mx-auto mb-6 animate-pulse">
+                <Sparkles className="w-8 h-8" />
               </div>
-            ) : (
-              /* CTA application trigger */
-              <>
-                <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mx-auto mb-6 animate-pulse">
-                  <Sparkles className="w-8 h-8" />
-                </div>
-                <h2 className="text-2xl font-extrabold tracking-tight text-slate-100">
-                  Apply For Nagarik Credit Score
-                </h2>
-                <p className="text-sm text-slate-400 mt-3 max-w-lg mx-auto leading-relaxed">
-                  You do not have an active credit index. Settle utility payments, build up digital transaction histories, and run behavioral audits instantly to activate your rating.
-                </p>
+              <h2 className="text-2xl font-extrabold tracking-tight text-slate-100">
+                Start Your Credit Evaluation
+              </h2>
+              <p className="text-sm text-slate-400 mt-3 max-w-lg mx-auto leading-relaxed">
+                Your score assessment now runs in the dedicated Credits flow. Continue there to answer the right number of questions and compute your score using your latest activity.
+              </p>
 
-                {applyLoading ? (
-                  <div className="mt-8 py-4 flex flex-col items-center gap-3">
-                    <RotateCw className="w-8 h-8 text-blue-500 animate-spin" />
-                    <p className="text-xs text-blue-400 font-semibold tracking-wider uppercase animate-pulse">
-                      {applyStep === 1 && "Verifying profile KYC registry..."}
-                      {applyStep === 2 && "Analyzing anti-fraud transactional velocity..."}
-                      {applyStep === 3 && "Submitting scoring request..."}
-                    </p>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleApplyForScore}
-                    className="mt-8 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-8 rounded-lg transition-all shadow-lg shadow-blue-500/15 cursor-pointer active:scale-[0.98]"
-                  >
-                    Apply for Credit Score
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                )}
-              </>
-            )}
+              <button
+                onClick={handleApplyForScore}
+                className="mt-8 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-8 rounded-lg transition-all shadow-lg shadow-blue-500/15 cursor-pointer active:scale-[0.98]"
+              >
+                Continue to Credits
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </>
           </div>
         </div>
       ) : (
@@ -797,51 +779,97 @@ export default function Home() {
             )}
           </div>
 
-          {/* AI Strategic Action & Integrity Warnings */}
           <div className="space-y-8">
-
-            {/* AI Improvement */}
             <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md">
               <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-emerald-400" />
-                AI Improvement Recommendation
+                Why this score?
               </h3>
-              {scoreData ? (
-                <p className="text-sm text-slate-400 leading-relaxed bg-slate-900/40 border border-slate-900/60 p-4 rounded-xl">
-                  {scoreData.top_improvement_action}
-                </p>
-              ) : (
-                <p className="text-xs text-slate-500">Recalculate to generate strategic recommendations.</p>
-              )}
-            </div>
-
-            {/* Integrity Warnings */}
-            {scoreData?.flags?.length > 0 ? (
-              <div className="p-6 rounded-2xl border border-red-500/20 bg-red-500/5">
-                <h3 className="text-sm font-bold text-red-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Behavioral Integrity Flags
-                </h3>
-                <div className="space-y-2 text-xs text-red-400/80 leading-relaxed">
-                  <p>Our machine-learning checks identified patterns requiring attention:</p>
-                  <ul className="list-disc list-inside space-y-1 mt-1 font-semibold text-red-400 font-mono">
-                    {scoreData.flags.map((flag: string) => (
-                      <li key={flag}>{flag}</li>
-                    ))}
+              <p className="text-sm text-slate-400 leading-relaxed bg-slate-900/40 border border-slate-900/60 p-4 rounded-xl">
+                {scoreData?.top_improvement_action || "This score combines payment reliability, psychometric behavior, and community trust into a single alternative credit rating."}
+              </p>
+              <div className="grid grid-cols-1 gap-3 mt-5 sm:grid-cols-2">
+                <div className="p-4 rounded-xl border border-slate-900 bg-slate-900/50">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Trust Layer Signals</p>
+                  <ul className="space-y-2 text-xs text-slate-400">
+                    <li>• Payment reliability and expense consistency</li>
+                    <li>• Behavioral trust from psychometric assessment</li>
+                    <li>• Community reputation and social trust graph signals</li>
                   </ul>
                 </div>
+                <div className="p-4 rounded-xl border border-slate-900 bg-slate-900/50">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-3">Confidence Snapshot</p>
+                  <div className="text-sm text-slate-200 font-semibold mb-2">{scoreData?.ml_prediction?.predicted_class ?? "REVIEW"}</div>
+                  <p className="text-[11px] text-slate-500">Repayment confidence: <span className="text-slate-200 font-semibold">{scoreData?.ml_prediction?.repayment_probability ? `${(scoreData.ml_prediction.repayment_probability * 100).toFixed(0)}%` : "N/A"}</span></p>
+                  <p className="text-[11px] text-slate-500">Default probability: <span className="text-slate-200 font-semibold">{scoreData?.ml_prediction?.default_probability ? `${(scoreData.ml_prediction.default_probability * 100).toFixed(0)}%` : "N/A"}</span></p>
+                </div>
               </div>
-            ) : (
-              <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/20 text-center">
-                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-bold px-3 py-1 rounded bg-emerald-500/5 border border-emerald-500/10">
-                  <ShieldCheck className="w-4 h-4" /> Zero Integrity Flags Detected
-                </span>
-                <p className="text-[10px] text-slate-500 mt-2 leading-normal">
-                  All digital wallet logs, device markers, and anti-collusion checks cleared safely.
-                </p>
-              </div>
-            )}
+            </div>
 
+            <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Social Trust Snapshot</h3>
+                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Community score</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="p-4 rounded-xl border border-slate-900 bg-slate-900/50">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Integrity Score</p>
+                  <p className="text-3xl font-extrabold text-slate-100">{scoreData?.factor_breakdown?.F4_integrity?.score ?? "--"}</p>
+                  <p className="text-[11px] text-slate-500 mt-2">Gauge of community trust and fraud resilience.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-slate-900 bg-slate-900/50">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Safety flags</p>
+                  <p className="text-lg font-semibold text-slate-100">{scoreData?.flags?.length ? scoreData.flags.length : 0}</p>
+                  <p className="text-[11px] text-slate-500 mt-2">Number of integrity warnings detected.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl border border-slate-900 bg-slate-950/40 backdrop-blur-md">
+              <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-4">Loan recommendation</h3>
+              <p className="text-sm text-slate-400 leading-relaxed bg-slate-900/40 border border-slate-900/60 p-4 rounded-xl">
+                {scoreData?.suggested_loan_amount
+                  ? `Based on your alternative trust score, the system suggests a loan amount of NPR ${scoreData.suggested_loan_amount.toLocaleString()} with a ${scoreData.repayment_plan?.toLowerCase() ?? "weekly"} repayment plan.`
+                  : "Your score is ready. Request a micro-credit loan and let the system match your request with alternative risk indicators."}
+              </p>
+              <div className="mt-4 rounded-xl border border-slate-900 bg-slate-900/40 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Realtime ML Demo</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Add one verified customer payment and watch the live merchant score update from the ML pipeline.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleRunDemoTransaction}
+                    disabled={demoTxLoading}
+                    className="shrink-0 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {demoTxLoading ? "Running..." : "Add Test Transaction"}
+                  </button>
+                </div>
+                {demoTxMessage && (
+                  <p className="mt-3 text-xs text-emerald-400">{demoTxMessage}</p>
+                )}
+                {demoTxError && (
+                  <p className="mt-3 text-xs text-red-400">{demoTxError}</p>
+                )}
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  onClick={() => router.push("/loans")}
+                  className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-lg shadow-blue-500/10 active:scale-[0.98]"
+                >
+                  Request Loan
+                </button>
+                <button
+                  onClick={() => router.push("/credits")}
+                  className="w-full py-3 rounded-xl border border-slate-800 bg-slate-900/80 text-slate-200 font-bold text-sm hover:bg-slate-900 transition-all"
+                >
+                  Improve Score
+                </button>
+              </div>
+            </div>
           </div>
 
         </div>

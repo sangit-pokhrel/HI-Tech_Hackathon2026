@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { User } from "../db/schema";
+import { Customer, Merchant, User } from "../db/schema";
 
 export const authRoutes = new Elysia({ prefix: "/api/auth" })
   // Inject global JWT instance to allow route handler to call sign/verify
@@ -44,6 +44,35 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
       });
 
       const savedUser = await newUser.save();
+
+      if (savedUser.user_type === "MERCHANT" || savedUser.user_type === "BOTH") {
+        const merchantCount = await Merchant.countDocuments();
+        const merchantId = `MRC-${String(merchantCount + 1).padStart(5, "0")}`;
+
+        await Merchant.create({
+          _id: merchantId,
+          user_id: savedUser._id,
+          merchant_code: merchantId,
+          merchant_name: savedUser.name,
+          business_type: "OTHER",
+          registration_status: "in_process",
+          wallet_age_months: 0,
+          business_started_year: new Date().getFullYear(),
+          is_active: true,
+        });
+      }
+
+      if (savedUser.user_type === "CUSTOMER" || savedUser.user_type === "BOTH") {
+        const customerCount = await Customer.countDocuments();
+        const customerId = `CUS-${String(customerCount + 1).padStart(5, "0")}`;
+
+        await Customer.create({
+          _id: customerId,
+          user_id: savedUser._id,
+          customer_code: customerId,
+          customer_name: savedUser.name,
+        });
+      }
       
       // Remove password before returning
       const userObj = savedUser.toObject();
@@ -93,6 +122,7 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
       // Find user by email
       const user = await User.findOne({ email });
       if (!user) {
+        console.warn(`[Auth] Login failed - user not found: ${email}`);
         set.status = 401;
         return {
           success: false,
@@ -103,6 +133,7 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
       // Verify password
       const isPasswordValid = Bun.password.verifySync(password, user.password || "");
       if (!isPasswordValid) {
+        console.warn(`[Auth] Login failed - invalid password for: ${email}`);
         set.status = 401;
         return {
           success: false,

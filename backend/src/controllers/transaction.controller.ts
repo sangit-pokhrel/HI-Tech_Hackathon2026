@@ -1,5 +1,78 @@
 import { Transaction, User, WalletActivity } from "../db/schema";
 
+export const processTransactionRecord = async (body: any) => {
+  const sender = await User.findById(body.sender_id);
+  const receiver = await User.findById(body.receiver_id);
+
+  if (!sender) {
+    throw new Error("Sender User profile not found");
+  }
+  if (!receiver) {
+    throw new Error("Receiver User profile not found");
+  }
+
+  if (sender.verified_status !== "verified") {
+    throw new Error("Sender user is not KYC verified");
+  }
+  if (receiver.verified_status !== "verified") {
+    throw new Error("Receiver user is not KYC verified");
+  }
+
+  const amount = parseFloat(body.amount);
+
+  if (body.transaction_type !== "CASH_IN" && sender.balance < amount) {
+    throw new Error("Insufficient wallet balance");
+  }
+
+  if (body.transaction_type === "CASH_IN") {
+    receiver.balance += amount;
+    await receiver.save();
+
+    const recAct = new WalletActivity({
+      _id: `WAL-${crypto.randomUUID().slice(0, 8)}`,
+      user_id: receiver._id,
+      activity_type: "CASH_IN",
+      amount,
+      balance_after_transaction: receiver.balance,
+    });
+    await recAct.save();
+  } else {
+    sender.balance -= amount;
+    receiver.balance += amount;
+
+    await sender.save();
+    await receiver.save();
+
+    let senderActType = "CASH_OUT";
+    if (body.transaction_type === "BILL_PAYMENT") senderActType = "BILL_PAYMENT";
+    if (body.transaction_type === "SUPPLIER_PAYMENT") senderActType = "SUPPLIER_PAYMENT";
+
+    const sendAct = new WalletActivity({
+      _id: `WAL-${crypto.randomUUID().slice(0, 8)}`,
+      user_id: sender._id,
+      activity_type: senderActType,
+      amount,
+      balance_after_transaction: sender.balance,
+    });
+    await sendAct.save();
+
+    let recActType = "PAYMENT_RECEIVED";
+    if (body.transaction_type === "REFUND") recActType = "PAYMENT_RECEIVED";
+
+    const recAct = new WalletActivity({
+      _id: `WAL-${crypto.randomUUID().slice(0, 8)}`,
+      user_id: receiver._id,
+      activity_type: recActType,
+      amount,
+      balance_after_transaction: receiver.balance,
+    });
+    await recAct.save();
+  }
+
+  const newTransaction = new Transaction(body);
+  return newTransaction.save();
+};
+
 export const getTransactions = async ({ query, set }: any) => {
   try {
     const limit = Math.min(Math.max(parseInt(query.limit || "20"), 1), 100);
@@ -66,84 +139,8 @@ export const getTransactions = async ({ query, set }: any) => {
 
 export const createTransaction = async ({ body, set }: any) => {
   try {
-    const sender = await User.findById(body.sender_id);
-    const receiver = await User.findById(body.receiver_id);
+    const savedTransaction = await processTransactionRecord(body);
 
-    if (!sender) {
-      throw new Error("Sender User profile not found");
-    }
-    if (!receiver) {
-      throw new Error("Receiver User profile not found");
-    }
-
-    if (sender.verified_status !== "verified") {
-      throw new Error("Sender user is not KYC verified");
-    }
-    if (receiver.verified_status !== "verified") {
-      throw new Error("Receiver user is not KYC verified");
-    }
-
-    const amount = parseFloat(body.amount);
-    
-    // Validate balance for debits (unless cash-in load)
-    if (body.transaction_type !== "CASH_IN" && sender.balance < amount) {
-      throw new Error("Insufficient wallet balance");
-    }
-
-    // Process balances on User wallets
-    if (body.transaction_type === "CASH_IN") {
-      receiver.balance += amount;
-      await receiver.save();
-
-      // Log wallet activity for Receiver
-      const recAct = new WalletActivity({
-        _id: `WAL-${crypto.randomUUID().slice(0, 8)}`,
-        user_id: receiver._id,
-        activity_type: "CASH_IN",
-        amount,
-        balance_after_transaction: receiver.balance
-      });
-      await recAct.save();
-    } else {
-      // Debit sender, Credit receiver
-      sender.balance -= amount;
-      receiver.balance += amount;
-
-      await sender.save();
-      await receiver.save();
-
-      // Log wallet activity for Sender
-      let senderActType = "CASH_OUT";
-      if (body.transaction_type === "BILL_PAYMENT") senderActType = "BILL_PAYMENT";
-      if (body.transaction_type === "SUPPLIER_PAYMENT") senderActType = "SUPPLIER_PAYMENT";
-
-      const sendAct = new WalletActivity({
-        _id: `WAL-${crypto.randomUUID().slice(0, 8)}`,
-        user_id: sender._id,
-        activity_type: senderActType,
-        amount,
-        balance_after_transaction: sender.balance
-      });
-      await sendAct.save();
-
-      // Log wallet activity for Receiver
-      let recActType = "PAYMENT_RECEIVED";
-      if (body.transaction_type === "REFUND") recActType = "PAYMENT_RECEIVED";
-
-      const recAct = new WalletActivity({
-        _id: `WAL-${crypto.randomUUID().slice(0, 8)}`,
-        user_id: receiver._id,
-        activity_type: recActType,
-        amount,
-        balance_after_transaction: receiver.balance
-      });
-      await recAct.save();
-    }
-
-    // Save transaction
-    const newTransaction = new Transaction(body);
-    const savedTransaction = await newTransaction.save();
-    
     set.status = 201;
     return {
       success: true,

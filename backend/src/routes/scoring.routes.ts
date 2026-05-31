@@ -11,6 +11,9 @@ export const scoringRoutes = new Elysia({ prefix: "/api/users" })
     params: t.Object({
       id: t.String(),
     }),
+    query: t.Object({
+      refresh: t.Optional(t.String()),
+    }),
     detail: {
       summary: "Get Nagarik Credits score (or data profile if no score exists)",
       tags: ["Scoring Engine"],
@@ -36,6 +39,23 @@ export const scoringRoutes = new Elysia({ prefix: "/api/users" })
     }),
     detail: {
       summary: "Compute Nagarik Credits score from psychometric answers via ML service",
+      tags: ["Scoring Engine"],
+      security: [{ BearerAuth: [] }],
+    },
+  })
+
+  .post("/:id/score/test-transaction", ScoringController.createMerchantTestTransaction, {
+    params: t.Object({
+      id: t.String(),
+    }),
+    body: t.Object({
+      amount: t.Optional(t.Numeric({ minimum: 100 })),
+      transaction_type: t.Optional(t.String()),
+      payment_channel: t.Optional(t.String()),
+      remarks: t.Optional(t.String()),
+    }),
+    detail: {
+      summary: "Create a demo merchant transaction and immediately refresh the live ML score",
       tags: ["Scoring Engine"],
       security: [{ BearerAuth: [] }],
     },

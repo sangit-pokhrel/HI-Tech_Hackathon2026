@@ -52,6 +52,7 @@ def fetch_collection(name: str, endpoint: str) -> pd.DataFrame:
     all_records = []
     page = 1
     limit = 100
+    output_path = RAW_DATA_DIR / f"{name}.csv"
     
     logger.info(f"Fetching all pages for {name} from {BACKEND_API_BASE_URL}{endpoint}...")
 
@@ -82,10 +83,12 @@ def fetch_collection(name: str, endpoint: str) -> pd.DataFrame:
 
         if not all_records:
             logger.warning(f"No records found for {name}")
+            if output_path.exists():
+                output_path.unlink()
+                logger.info(f"Cleared stale cached file -> {output_path}")
             return pd.DataFrame()
 
         df = pd.json_normalize(all_records)
-        output_path = RAW_DATA_DIR / f"{name}.csv"
         df.to_csv(output_path, index=False)
 
         logger.info(f"Saved {len(df)} rows -> {output_path}")

@@ -1,3 +1,0 @@
-_id,model_version,algorithm,training_records,feature_count,artifact_path,trained_at,created_at,__v,metrics.accuracy,metrics.precision,metrics.recall,metrics.f1_score,metrics.roc_auc
-RUN-00002,xgboost_v1.1,XGBoost,1420,29,/opt/models/xgboost_v1.1.json,2026-05-25T07:38:41.000Z,2026-05-30T09:48:32.955Z,0,0.938,0.921,0.945,0.932,0.968
-RUN-00001,random_forest_v1.0,RandomForest,1250,29,/opt/models/random_forest_v1.0.bin,2026-04-30T12:47:03.000Z,2026-05-30T09:48:32.955Z,0,0.912,0.895,0.923,0.908,0.945

@@ -1,0 +1,40 @@
+{
+  "merchant_id": "MRC-NEW001",
+  "merchant_code": "MRC-NEW001",
+  "merchant_user_id": "USR-NEW001",
+  "scores": {
+    "f1_livelihood_rhythm": 0,
+    "f2_cash_flow_elasticity": 0,
+    "f3_smart_digital_footprint": 0,
+    "f4_community_trust_graph": 0,
+    "f5_psychometric": 90,
+    "fraud_penalty": 40,
+    "rule_based_nagarik_credits_score": 275,
+    "ml_repayment_score": 400,
+    "final_nagarik_credits_score": 275
+  },
+  "probabilities": {
+    "default_probability": 0.6,
+    "repayment_probability": 0.4
+  },
+  "loan_recommendation": {
+    "risk_band": "WATCH",
+    "decision": "MICRO_CREDIT_ONLY",
+    "suggested_loan_amount": 0,
+    "repayment_plan": "DAILY"
+  },
+  "score_mix": {
+    "training_records": 0,
+    "rule_weight": 1.0,
+    "model_weight": 0.0,
+    "best_model": "psychometric_baseline"
+  },
+  "explanation": {
+    "summary": "New profile with no transaction history. Nagarik Credits score of 275 is anchored on psychometric behavioral signals (avg: 500). Score will improve as digital transactions build up.",
+    "positive_factors": [],
+    "risk_factors": [
+      "No digital transaction history yet - score will improve with usage"
+    ]
+  },
+  "predicted_at": "2026-05-31T05:04:58.512088+00:00"
+}

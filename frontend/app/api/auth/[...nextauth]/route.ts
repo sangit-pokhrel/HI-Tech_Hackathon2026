@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3000/api";
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3001/api";
           const res = await fetch(`${backendUrl}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -33,6 +33,11 @@ export const authOptions: NextAuthOptions = {
               token: data.token
             };
           }
+
+          console.error("NextAuth authorize failed", {
+            status: res.status,
+            body: data,
+          });
           return null;
         } catch (error) {
           console.error("NextAuth authorize error:", error);

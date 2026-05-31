@@ -33,7 +33,7 @@ export default function SignUpPage() {
 
     try {
       // 1. Post to Elysia backend registration API
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3000/api";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:3001/api";
       const regRes = await fetch(`${backendUrl}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

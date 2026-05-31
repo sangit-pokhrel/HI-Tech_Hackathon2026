@@ -1,9 +1,10 @@
 import json
-import joblib
-import pandas as pd
 from datetime import datetime, timezone
 
-from src.common.config import PROCESSED_DATA_DIR, MODEL_DIR, PREDICTIONS_DIR
+import joblib
+import pandas as pd
+
+from src.common.config import METRICS_DIR, MODEL_DIR, PREDICTIONS_DIR, PROCESSED_DATA_DIR
 from src.prediction.loan_recommendation import recommend_loan
 from src.scoring.fusion_score import calculate_rule_score
 
@@ -13,6 +14,10 @@ def load_dataset() -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError("merchant_training_dataset.csv not found. Run build_features first.")
     return pd.read_csv(path)
+
+
+def clamp(value: float, min_value: float, max_value: float) -> float:
+    return max(min_value, min(max_value, float(value)))
 
 
 def get_positive_factors(row: dict) -> list[str]:
@@ -57,254 +62,171 @@ def get_risk_factors(row: dict) -> list[str]:
     return risks
 
 
-def predict_merchant(merchant_id: str) -> dict:
-    df = load_dataset()
-    merchant_rows = df[df["merchant_id"].astype(str) == str(merchant_id)]
-
-    if merchant_rows.empty and "merchant_code" in df.columns:
-        merchant_rows = df[df["merchant_code"].astype(str) == str(merchant_id)]
-
-    if merchant_rows.empty and "merchant_user_id" in df.columns:
-        merchant_rows = df[df["merchant_user_id"].astype(str) == str(merchant_id)]
-
-    if merchant_rows.empty:
-        raise ValueError(f"Merchant not found in processed dataset: {merchant_id}")
-
-    row = merchant_rows.iloc[0].to_dict()
-
-    # Check for completely brand new user/merchant with zero transactions
-    active_days = float(row.get("active_days", 0) or 0)
-    monthly_revenue = float(row.get("monthly_revenue_avg", 0) or 0)
-
-    if active_days == 0 and monthly_revenue == 0:
-        final_score = 0
-        fraud_penalty = int(row.get("fraud_penalty", 0))
-        loan = recommend_loan(row, final_score, fraud_penalty)
-        result = {
-            "merchant_id": str(row["merchant_id"]),
-            "merchant_code": str(row.get("merchant_code", "")),
-            "merchant_user_id": str(row.get("merchant_user_id", "")),
-            "scores": {
-                "f1_livelihood_rhythm": 0,
-                "f2_cash_flow_elasticity": 0,
-                "f3_smart_digital_footprint": 0,
-                "f4_community_trust_graph": 0,
-                "f5_psychometric": 0,
-                "fraud_penalty": fraud_penalty,
-                "rule_based_nagarik_credits_score": 0,
-                "ml_repayment_score": 0,
-                "final_nagarik_credits_score": 0,
-            },
-            "probabilities": {
-                "default_probability": 1.0,
-                "repayment_probability": 0.0,
-            },
-            "loan_recommendation": loan,
-            "explanation": {
-                "summary": (
-                    f"Merchant {row['merchant_id']} is a brand new account with no transaction history. "
-                    f"The decision is {loan['decision']} with {loan['repayment_plan']} repayment due to THIN_FILE status."
-                ),
-                "positive_factors": [],
-                "risk_factors": ["No transaction history detected", "Thin file profile"],
-            },
-            "predicted_at": datetime.now(timezone.utc).isoformat(),
+def load_model_metadata() -> dict:
+    metrics_path = METRICS_DIR / "credit_risk_metrics.json"
+    if not metrics_path.exists():
+        return {
+            "best_model": "unavailable",
+            "training_records": 0,
+            "metrics": {},
         }
-        # Save latest prediction output for audit/demo.
-        out_path = PREDICTIONS_DIR / f"{result['merchant_id']}_prediction.json"
-        with open(out_path, "w", encoding="utf-8") as file:
-            json.dump(result, file, indent=2)
-        return result
 
+    with open(metrics_path, encoding="utf-8") as file:
+        return json.load(file)
+
+
+def run_model_probability(features: dict) -> tuple[float, dict]:
     model_path = MODEL_DIR / "credit_risk_model.pkl"
     feature_path = MODEL_DIR / "feature_columns.json"
+    metadata = load_model_metadata()
 
     if model_path.exists() and feature_path.exists():
         model = joblib.load(model_path)
         with open(feature_path, encoding="utf-8") as file:
             feature_columns = json.load(file)
 
-        x = pd.DataFrame([row])[feature_columns].fillna(0)
+        x = pd.DataFrame([features]).reindex(columns=feature_columns, fill_value=0).fillna(0)
 
         if hasattr(model, "predict_proba"):
             default_probability = float(model.predict_proba(x)[0][1])
         else:
             default_probability = float(model.predict(x)[0])
+
+        return default_probability, metadata
+
+    rule_score = float(features.get("rule_based_nagarik_credits_score", 500))
+    return 1 - (rule_score / 1000), metadata
+
+
+def blend_scores(rule_based_score: int, ml_repayment_score: int, fraud_penalty: int, metadata: dict) -> tuple[int, dict]:
+    training_records = int(metadata.get("training_records", 0) or 0)
+
+    downgrade_weight = clamp(training_records / 200.0, 0.05, 0.40)
+    uplift_weight = 0.40 if training_records > 0 else 0.25
+
+    if ml_repayment_score >= rule_based_score:
+        model_weight = uplift_weight
     else:
-        # Rule-based fallback before training.
-        rule_score = float(row.get("rule_based_nagarik_credits_score", 500))
-        default_probability = 1 - (rule_score / 1000)
+        model_weight = downgrade_weight
 
-    repayment_probability = 1 - default_probability
-    ml_repayment_score = round(repayment_probability * 1000)
+    if fraud_penalty >= 120 and ml_repayment_score > rule_based_score:
+        model_weight = min(model_weight, 0.20)
 
-    rule_based_score = int(row.get("rule_based_nagarik_credits_score", ml_repayment_score))
-    fraud_penalty = int(row.get("fraud_penalty", 0))
-
-    final_score = round((rule_based_score * 0.60) + (ml_repayment_score * 0.40))
+    rule_weight = 1 - model_weight
+    final_score = round((rule_based_score * rule_weight) + (ml_repayment_score * model_weight))
     final_score = max(0, min(1000, final_score))
 
-    loan = recommend_loan(row, final_score, fraud_penalty)
-
-    result = {
-        "merchant_id": str(row["merchant_id"]),
-        "merchant_code": str(row.get("merchant_code", "")),
-        "merchant_user_id": str(row.get("merchant_user_id", "")),
-        "scores": {
-            "f1_livelihood_rhythm": int(row.get("f1_livelihood_rhythm", 0)),
-            "f2_cash_flow_elasticity": int(row.get("f2_cash_flow_elasticity", 0)),
-            "f3_smart_digital_footprint": int(row.get("f3_smart_digital_footprint", 0)),
-            "f4_community_trust_graph": int(row.get("f4_community_trust_graph", 0)),
-            "f5_psychometric": int(row.get("f5_psychometric", 0)),
-            "fraud_penalty": fraud_penalty,
-            "rule_based_nagarik_credits_score": rule_based_score,
-            "ml_repayment_score": ml_repayment_score,
-            "final_nagarik_credits_score": final_score,
-        },
-        "probabilities": {
-            "default_probability": round(default_probability, 4),
-            "repayment_probability": round(repayment_probability, 4),
-        },
-        "loan_recommendation": loan,
-        "explanation": {
-            "summary": (
-                f"Merchant {row['merchant_id']} received a Nagarik Credits of {final_score}. "
-                f"The decision is {loan['decision']} with {loan['repayment_plan']} repayment."
-            ),
-            "positive_factors": get_positive_factors(row),
-            "risk_factors": get_risk_factors(row),
-        },
-        "predicted_at": datetime.now(timezone.utc).isoformat(),
+    return final_score, {
+        "training_records": training_records,
+        "rule_weight": round(rule_weight, 4),
+        "model_weight": round(model_weight, 4),
+        "best_model": metadata.get("best_model", "unavailable"),
     }
 
-    # Save latest prediction output for audit/demo.
+
+def save_prediction(result: dict) -> None:
     out_path = PREDICTIONS_DIR / f"{result['merchant_id']}_prediction.json"
     with open(out_path, "w", encoding="utf-8") as file:
         json.dump(result, file, indent=2)
 
-    return result
+
+def calculate_psychometric_baseline_score(features: dict) -> tuple[int, int, float, float]:
+    psychometric_avg = float(features.get("psychometric_avg", 0) or 0)
+    conscientiousness = float(features.get("conscientiousness_score", 0.5) or 0.5)
+    risk_consistency = float(features.get("risk_decision_consistency_score", 0.5) or 0.5)
+
+    f5_psychometric = round((psychometric_avg / 1000) * 180)
+    behavioural_bonus = round(((conscientiousness + risk_consistency) / 2) * 40)
+    raw_baseline = f5_psychometric + behavioural_bonus
+    final_score = min(round(raw_baseline * (550 / 220)), 550)
+    final_score = max(final_score, 100)
+    return final_score, f5_psychometric, psychometric_avg, conscientiousness
 
 
-def predict_realtime(features: dict) -> dict:
-    # 1. Compute deterministic score metrics first & merge them back into the features dict
-    rule_metrics = calculate_rule_score(features)
-    features.update(rule_metrics)
-    
-    # Check for completely brand new user/merchant with zero transactions
-    active_days = float(features.get("active_days", 0) or 0)
-    monthly_revenue = float(features.get("monthly_revenue_avg", 0) or 0)
+def build_zero_history_result(features: dict, fraud_penalty: int) -> dict:
+    final_score, f5_psychometric, psychometric_avg, conscientiousness = calculate_psychometric_baseline_score(features)
+    risk_consistency = float(features.get("risk_decision_consistency_score", 0.5) or 0.5)
 
-    if active_days == 0 and monthly_revenue == 0:
-        fraud_penalty = int(rule_metrics["fraud_penalty"])
-
-        # ── Psychometric-anchored baseline for zero-history users ──────────────
-        # New users have no transaction signals, but their psychometric answers
-        # carry real information. Use them to derive a non-zero starter score.
-        #   psychometric_avg : 0-1000  (submitted answers, 750 in this example)
-        #   f5_psychometric  : maps to 0-180 in the rule score (max 200)
-        #   baseline_score   : scales psychometric quality to 0-550 range
-        #                      (can't reach GOLD/PLATINUM without transaction history)
-        psychometric_avg = float(features.get("psychometric_avg", 0) or 0)
-        conscientiousness = float(features.get("conscientiousness_score", 0.5) or 0.5)
-        risk_consistency  = float(features.get("risk_decision_consistency_score", 0.5) or 0.5)
-
-        # F5 psychometric sub-score (0-180, same weight as rule engine)
-        f5_psychometric = round((psychometric_avg / 1000) * 180)
-
-        # Behavioural bonus from conscientiousness & consistency (0-40 points)
-        behavioural_bonus = round((conscientiousness + risk_consistency) / 2 * 40)
-
-        # Baseline = F5 + behavioural bonus, scaled to max 550
-        # 750 psychometric → f5=135, bonus≈20 → total≈155 → scaled * (550/220) ≈ 388
-        raw_baseline = f5_psychometric + behavioural_bonus
-        final_score = min(round(raw_baseline * (550 / 220)), 550)
-        final_score = max(final_score, 100)  # floor: never below 100 for someone who answered questions
-
-        # Derive default probability inversely from psychometric quality
-        # 750 psychometric → repayment_prob ≈ 0.60
-        repayment_probability = round(min(psychometric_avg / 1000 * 0.80, 0.80), 4)
-        default_probability   = round(1 - repayment_probability, 4)
-        ml_repayment_score    = round(repayment_probability * 1000)
-
-        loan = recommend_loan(features, final_score, fraud_penalty)
-
-        positive = []
-        risks    = ["No digital transaction history yet — score will improve with usage"]
-        if psychometric_avg >= 700:
-            positive.append("Strong psychometric behavioral profile")
-        if conscientiousness >= 0.7:
-            positive.append("High conscientiousness score")
-        if risk_consistency >= 0.7:
-            positive.append("Consistent risk decision-making")
-        if psychometric_avg < 400:
-            risks.append("Low psychometric signal strength")
-
-        result = {
-            "merchant_id": str(features.get("merchant_id", "REALTIME")),
-            "merchant_code": str(features.get("merchant_code", "REALTIME")),
-            "merchant_user_id": str(features.get("merchant_user_id", "REALTIME")),
-            "scores": {
-                "f1_livelihood_rhythm": 0,
-                "f2_cash_flow_elasticity": 0,
-                "f3_smart_digital_footprint": 0,
-                "f4_community_trust_graph": 0,
-                "f5_psychometric": f5_psychometric,
-                "fraud_penalty": fraud_penalty,
-                "rule_based_nagarik_credits_score": final_score,
-                "ml_repayment_score": ml_repayment_score,
-                "final_nagarik_credits_score": final_score,
-            },
-            "probabilities": {
-                "default_probability": default_probability,
-                "repayment_probability": repayment_probability,
-            },
-            "loan_recommendation": loan,
-            "explanation": {
-                "summary": (
-                    f"New profile with no transaction history. "
-                    f"Nagarik Credits score of {final_score} is anchored entirely on psychometric behavioral signals "
-                    f"(avg: {round(psychometric_avg)}). Score will improve significantly as digital transactions build up."
-                ),
-                "positive_factors": positive,
-                "risk_factors": risks,
-            },
-            "predicted_at": datetime.now(timezone.utc).isoformat(),
-        }
-        return result
-
-
-    rule_based_score = int(rule_metrics["rule_based_nagarik_credits_score"])
-    fraud_penalty = int(rule_metrics["fraud_penalty"])
-
-    # 2. Perform ML model prediction with fully enriched features
-    model_path = MODEL_DIR / "credit_risk_model.pkl"
-    feature_path = MODEL_DIR / "feature_columns.json"
-
-    if model_path.exists() and feature_path.exists():
-        model = joblib.load(model_path)
-        with open(feature_path, encoding="utf-8") as file:
-            feature_columns = json.load(file)
-
-        x = pd.DataFrame([features])[feature_columns].fillna(0)
-
-        if hasattr(model, "predict_proba"):
-            default_probability = float(model.predict_proba(x)[0][1])
-        else:
-            default_probability = float(model.predict(x)[0])
-    else:
-        # Rule-based fallback before training.
-        rule_score = float(features.get("rule_based_nagarik_credits_score", 500))
-        default_probability = 1 - (rule_score / 1000)
-
-    repayment_probability = 1 - default_probability
+    repayment_probability = round(min((psychometric_avg / 1000) * 0.80, 0.80), 4)
+    default_probability = round(1 - repayment_probability, 4)
     ml_repayment_score = round(repayment_probability * 1000)
-
-    final_score = round((rule_based_score * 0.60) + (ml_repayment_score * 0.40))
-    final_score = max(0, min(1000, final_score))
 
     loan = recommend_loan(features, final_score, fraud_penalty)
 
-    result = {
+    positive_factors = []
+    risk_factors = ["No digital transaction history yet - score will improve with usage"]
+    if psychometric_avg >= 700:
+        positive_factors.append("Strong psychometric behavioral profile")
+    if conscientiousness >= 0.7:
+        positive_factors.append("High conscientiousness score")
+    if risk_consistency >= 0.7:
+        positive_factors.append("Consistent risk decision-making")
+    if psychometric_avg < 400:
+        risk_factors.append("Low psychometric signal strength")
+
+    return {
+        "merchant_id": str(features.get("merchant_id", "REALTIME")),
+        "merchant_code": str(features.get("merchant_code", "REALTIME")),
+        "merchant_user_id": str(features.get("merchant_user_id", "REALTIME")),
+        "scores": {
+            "f1_livelihood_rhythm": 0,
+            "f2_cash_flow_elasticity": 0,
+            "f3_smart_digital_footprint": 0,
+            "f4_community_trust_graph": 0,
+            "f5_psychometric": f5_psychometric,
+            "fraud_penalty": fraud_penalty,
+            "rule_based_nagarik_credits_score": final_score,
+            "ml_repayment_score": ml_repayment_score,
+            "final_nagarik_credits_score": final_score,
+        },
+        "probabilities": {
+            "default_probability": default_probability,
+            "repayment_probability": repayment_probability,
+        },
+        "loan_recommendation": loan,
+        "score_mix": {
+            "training_records": 0,
+            "rule_weight": 1.0,
+            "model_weight": 0.0,
+            "best_model": "psychometric_baseline",
+        },
+        "explanation": {
+            "summary": (
+                f"New profile with no transaction history. Nagarik Credits score of {final_score} "
+                f"is anchored on psychometric behavioral signals (avg: {round(psychometric_avg)}). "
+                "Score will improve as digital transactions build up."
+            ),
+            "positive_factors": positive_factors,
+            "risk_factors": risk_factors,
+        },
+        "predicted_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def build_prediction_result(features: dict, rule_metrics: dict) -> dict:
+    active_days = float(features.get("active_days", 0) or 0)
+    monthly_revenue = float(features.get("monthly_revenue_avg", 0) or 0)
+    fraud_penalty = int(rule_metrics["fraud_penalty"])
+
+    if active_days == 0 and monthly_revenue == 0:
+        return build_zero_history_result(features, fraud_penalty)
+
+    rule_based_score = int(rule_metrics["rule_based_nagarik_credits_score"])
+    default_probability, metadata = run_model_probability(features)
+    repayment_probability = 1 - default_probability
+    ml_repayment_score = round(repayment_probability * 1000)
+    final_score, score_mix = blend_scores(rule_based_score, ml_repayment_score, fraud_penalty, metadata)
+
+    thin_file_floor, _, _, _ = calculate_psychometric_baseline_score(features)
+    active_days = float(features.get("active_days", 0) or 0)
+    transaction_gravity = float(features.get("transaction_gravity_score", 0) or 0)
+    monthly_revenue = float(features.get("monthly_revenue_avg", 0) or 0)
+    if active_days <= 2 and transaction_gravity <= 0.1 and monthly_revenue <= 5000 and fraud_penalty < 100:
+        final_score = max(final_score, thin_file_floor)
+
+    loan = recommend_loan(features, final_score, fraud_penalty)
+
+    return {
         "merchant_id": str(features.get("merchant_id", "REALTIME")),
         "merchant_code": str(features.get("merchant_code", "REALTIME")),
         "merchant_user_id": str(features.get("merchant_user_id", "REALTIME")),
@@ -324,6 +246,7 @@ def predict_realtime(features: dict) -> dict:
             "repayment_probability": round(repayment_probability, 4),
         },
         "loan_recommendation": loan,
+        "score_mix": score_mix,
         "explanation": {
             "summary": (
                 f"Real-time prediction received a Nagarik Credits of {final_score}. "
@@ -335,4 +258,40 @@ def predict_realtime(features: dict) -> dict:
         "predicted_at": datetime.now(timezone.utc).isoformat(),
     }
 
+
+def predict_merchant(merchant_id: str) -> dict:
+    df = load_dataset()
+    merchant_rows = df[df["merchant_id"].astype(str) == str(merchant_id)]
+
+    if merchant_rows.empty and "merchant_code" in df.columns:
+        merchant_rows = df[df["merchant_code"].astype(str) == str(merchant_id)]
+
+    if merchant_rows.empty and "merchant_user_id" in df.columns:
+        merchant_rows = df[df["merchant_user_id"].astype(str) == str(merchant_id)]
+
+    if merchant_rows.empty:
+        raise ValueError(f"Merchant not found in processed dataset: {merchant_id}")
+
+    row = merchant_rows.iloc[0].to_dict()
+    rule_metrics = {
+        "f1_livelihood_rhythm": int(row.get("f1_livelihood_rhythm", 0)),
+        "f2_cash_flow_elasticity": int(row.get("f2_cash_flow_elasticity", 0)),
+        "f3_smart_digital_footprint": int(row.get("f3_smart_digital_footprint", 0)),
+        "f4_community_trust_graph": int(row.get("f4_community_trust_graph", 0)),
+        "f5_psychometric": int(row.get("f5_psychometric", 0)),
+        "fraud_penalty": int(row.get("fraud_penalty", 0)),
+        "fraud_flags": row.get("fraud_flags", []),
+        "rule_based_nagarik_credits_score": int(row.get("rule_based_nagarik_credits_score", 0)),
+    }
+
+    result = build_prediction_result(row, rule_metrics)
+    save_prediction(result)
+    return result
+
+
+def predict_realtime(features: dict) -> dict:
+    rule_metrics = calculate_rule_score(features)
+    features.update(rule_metrics)
+
+    result = build_prediction_result(features, rule_metrics)
     return result

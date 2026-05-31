@@ -8,7 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 BACKEND_API_BASE_URL = os.getenv(
     "BACKEND_API_BASE_URL",
-    "http://localhost:3000/api"
+    "http://localhost:3001/api"
 ).rstrip("/")
 
 GENERATE_SYNTHETIC_LABELS = os.getenv("GENERATE_SYNTHETIC_LABELS", "true").lower() == "true"
